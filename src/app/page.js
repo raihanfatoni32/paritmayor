@@ -195,13 +195,13 @@ export default function BerandaPage() {
                 <div className="absolute inset-0 flex flex-col items-center justify-end pb-6">
                   <div className="w-32 h-32 rounded-full bg-white/20 border-4 border-white/40 flex items-center justify-center mb-4">
                     <svg xmlns="http://www.w3.org/2000/svg" className="w-16 h-16 text-white/80" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/>
+                      <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z" />
                     </svg>
                   </div>
                 </div>
                 {/* Dekoratif lingkaran */}
-                <div className="absolute top-4 right-4 w-24 h-24 rounded-full border-4 border-white/10" aria-hidden="true"/>
-                <div className="absolute top-8 right-8 w-16 h-16 rounded-full border-4 border-white/10" aria-hidden="true"/>
+                <div className="absolute top-4 right-4 w-24 h-24 rounded-full border-4 border-white/10" aria-hidden="true" />
+                <div className="absolute top-8 right-8 w-16 h-16 rounded-full border-4 border-white/10" aria-hidden="true" />
               </div>
               {/* Badge nama Lurah */}
               <div className="absolute -bottom-4 left-1/2 md:left-8 -translate-x-1/2 md:translate-x-0 bg-white rounded-xl shadow-lg px-5 py-3 text-center min-w-[200px]">
@@ -293,7 +293,7 @@ export default function BerandaPage() {
               {/* Dekoratif pohon/alam */}
               <div className="absolute top-6 right-6 opacity-20">
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-24 h-24 text-white" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="M17 8C8 10 5.9 16.17 3.82 21h2.41l1-2.5c.27.08.57.12.87.12.9 0 1.71-.34 2.33-.88A3.988 3.988 0 0 0 12 19c.51 0 .99-.1 1.44-.27.62.54 1.43.88 2.33.88.3 0 .6-.04.87-.12l1 2.5h2.41C17.1 16.17 15 10 6 8h11z"/>
+                  <path d="M17 8C8 10 5.9 16.17 3.82 21h2.41l1-2.5c.27.08.57.12.87.12.9 0 1.71-.34 2.33-.88A3.988 3.988 0 0 0 12 19c.51 0 .99-.1 1.44-.27.62.54 1.43.88 2.33.88.3 0 .6-.04.87-.12l1 2.5h2.41C17.1 16.17 15 10 6 8h11z" />
                 </svg>
               </div>
             </div>

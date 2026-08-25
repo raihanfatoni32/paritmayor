@@ -151,12 +151,24 @@ export default function Footer() {
       {/* Copyright Bar */}
       <div className="border-t border-white/10">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col sm:flex-row justify-between items-center gap-2">
-          <p className="text-blue-400 text-xs text-center">
-            © 2024 Pemerintah Kota Pontianak — Kelurahan Parit Mayor. Hak Cipta Dilindungi Undang-Undang.
-          </p>
+          {/*
+            ── SHORTCUT TERSEMBUNYI ADMIN ─────────────────────────────
+            Dibungkus Link redup — tampak seperti teks biasa bagi warga.
+            Klik untuk masuk ke halaman login admin tanpa diketahui umum.
+            ──────────────────────────────────────────────────────────── */}
+          <Link
+            href="/admin/login"
+            id="hidden-admin-shortcut"
+            className="text-blue-400/70 hover:text-blue-400 text-xs text-center transition-colors duration-300 cursor-default select-none"
+            title=""
+            aria-hidden="true"
+            tabIndex={-1}
+          >
+            © 2026 Pemerintah Kelurahan Parit Mayor. Hak Cipta Dilindungi Undang-Undang.
+          </Link>
           <div className="flex gap-4">
             <a href="#" className="text-blue-400 hover:text-white text-xs transition-colors">Kebijakan Privasi</a>
-            <a href="#" className="text-blue-400 hover:text-white text-xs transition-colors">Syarat & Ketentuan</a>
+            <a href="#" className="text-blue-400 hover:text-white text-xs transition-colors">Syarat &amp; Ketentuan</a>
             <a href="#" className="text-blue-400 hover:text-white text-xs transition-colors">Peta Situs</a>
           </div>
         </div>
