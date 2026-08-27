@@ -79,6 +79,7 @@ function IconSave() {
 const navItems = [
   { id: "dashboard", label: "Dashboard", icon: <IconDashboard /> },
   { id: "beranda", label: "Kelola Beranda", icon: <IconSettings /> },
+  { id: "profil", label: "Kelola Profil", icon: <IconForm /> },
   { id: "berita", label: "Kelola Berita", icon: <IconNews /> },
   { id: "infografis", label: "Data Infografis", icon: <IconChart /> },
   { id: "layanan", label: "Formulir Layanan", icon: <IconForm /> },
@@ -214,6 +215,15 @@ export default function AdminDashboardPage() {
   const [isUploadingHighlight, setIsUploadingHighlight] = useState(false);
   const [isSavingBeranda, setIsSavingBeranda] = useState(false);
 
+  /* ────────────────────────────────────────────────────────
+     KELOMPOK E — Form Pengaturan Profil
+     ──────────────────────────────────────────────────────── */
+  const [profilHeroImage, setProfilHeroImage] = useState("");
+  const [profilSejarahImage, setProfilSejarahImage] = useState("");
+  const [isUploadingProfilHero, setIsUploadingProfilHero] = useState(false);
+  const [isUploadingProfilSejarah, setIsUploadingProfilSejarah] = useState(false);
+  const [isSavingProfil, setIsSavingProfil] = useState(false);
+
 
   /* ── useEffect: Load Data dari Supabase (SUDAH DIPERBAIKI) ── */
   /* ── useEffect: Proteksi Rute Berbasis Sesi Supabase Auth (TERKOREKSI) ── */
@@ -276,6 +286,7 @@ export default function AdminDashboardPage() {
     if (isAuthed) {
       loadDataSupabase();
       fetchPengaturanBeranda();
+      fetchPengaturanProfil();
     }
   }, [isAuthed]);
 
@@ -292,6 +303,19 @@ export default function AdminDashboardPage() {
       setHighlightTitle(data.highlight_title || "Kolam Susu (Kolam Teduh)");
       setHighlightDesc(data.highlight_desc || "");
       setHighlightImage(data.highlight_image || "");
+    }
+  };
+
+  /* ── useEffect: Load Pengaturan Profil dari Supabase ── */
+  const fetchPengaturanProfil = async () => {
+    const { data } = await supabase
+      .from('pengaturan_profil')
+      .select('*')
+      .eq('id', 1)
+      .maybeSingle();
+    if (data) {
+      setProfilHeroImage(data.hero_image || "");
+      setProfilSejarahImage(data.sejarah_image || "");
     }
   };
 
@@ -441,6 +465,50 @@ export default function AdminDashboardPage() {
       alert("❌ Kesalahan jaringan: " + e.message);
     } finally {
       setIsSavingBeranda(false);
+    }
+  };
+
+  /* ── Handler: Upload Hero Profil ─────────────────────── */
+  const handleProfilHeroUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const url = await uploadImageToStorage(file, setIsUploadingProfilHero);
+    if (url) setProfilHeroImage(url);
+  };
+
+  /* ── Handler: Upload Sejarah Profil ──────────────────── */
+  const handleProfilSejarahUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const url = await uploadImageToStorage(file, setIsUploadingProfilSejarah);
+    if (url) setProfilSejarahImage(url);
+  };
+
+  /* ── Handler: Simpan Pengaturan Profil ─────────────── */
+  const handleSimpanProfil = async () => {
+    setIsSavingProfil(true);
+    const payload = {
+      hero_image: profilHeroImage,
+      sejarah_image: profilSejarahImage,
+      updated_at: new Date().toISOString(),
+    };
+    try {
+      const { data: existing } = await supabase
+        .from('pengaturan_profil').select('id').eq('id', 1).maybeSingle();
+      let err;
+      if (existing) {
+        const { error } = await supabase.from('pengaturan_profil').update(payload).eq('id', 1);
+        err = error;
+      } else {
+        const { error } = await supabase.from('pengaturan_profil').insert({ id: 1, ...payload });
+        err = error;
+      }
+      if (err) alert("❌ Gagal menyimpan: " + err.message);
+      else alert("✅ Pengaturan Profil berhasil disimpan!");
+    } catch (e) {
+      alert("❌ Kesalahan jaringan: " + e.message);
+    } finally {
+      setIsSavingProfil(false);
     }
   };
 
@@ -884,6 +952,106 @@ export default function AdminDashboardPage() {
                     <><svg className="animate-spin w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4z" /></svg> Menyimpan...</>
                   ) : (
                     <><IconSave /> Simpan Pengaturan Beranda</>
+                  )}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* ════════════════════════════════════════════
+              KONTEN — KELOLA PROFIL
+              ════════════════════════════════════════════ */}
+          {activeNav === "profil" && (
+            <div className="space-y-8">
+              <div>
+                <h1 className="text-2xl font-extrabold text-gray-900 leading-tight">Pengaturan Halaman Profil</h1>
+                <p className="text-gray-500 text-sm mt-1 max-w-xl">Ubah foto Hero dan foto card Kolam Susu (Sejarah). Teks dibiarkan statis untuk menjaga desain.</p>
+              </div>
+
+              {/* ── Section Hero Profil ─────────────────────────── */}
+              <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 sm:p-8 max-w-2xl">
+                <SectionHeader
+                  icon={<IconSettings />}
+                  title="Hero Section Profil"
+                  subtitle="Atur foto background yang tampil di halaman profil kelurahan."
+                />
+                <div className="border-t border-gray-100 pt-6 space-y-5">
+                  {/* Preview Hero Image */}
+                  {profilHeroImage && (
+                    <div className="relative rounded-xl overflow-hidden h-40">
+                      <img src={profilHeroImage} alt="Profil Hero Preview" className="w-full h-full object-cover" />
+                      <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
+                        <span className="text-white text-xs font-semibold bg-black/50 px-3 py-1 rounded-full">Preview Hero Profil</span>
+                      </div>
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                      Foto Background Hero Profil
+                    </label>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleProfilHeroUpload}
+                      disabled={isUploadingProfilHero}
+                      className="w-full text-sm text-gray-600 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:text-white file:cursor-pointer cursor-pointer"
+                      style={{ '--file-bg': '#0A58CA' }}
+                    />
+                    {isUploadingProfilHero && <p className="text-xs text-blue-500 mt-1 animate-pulse">⏳ Mengompres &amp; mengupload gambar...</p>}
+                    {profilHeroImage && <p className="text-xs text-green-600 mt-1">✅ Foto hero profil sudah di-upload.</p>}
+                  </div>
+                </div>
+              </div>
+
+              {/* ── Section Kolam Susu (Sejarah) ──────────── */}
+              <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 sm:p-8 max-w-2xl">
+                <SectionHeader
+                  icon={<IconChart />}
+                  title="Foto Kolam Susu (Situs Sejarah)"
+                  subtitle="Atur foto untuk card Kolam Susu di halaman Profil."
+                />
+                <div className="border-t border-gray-100 pt-6 space-y-5">
+                  {/* Preview Sejarah Image */}
+                  {profilSejarahImage && (
+                    <div className="relative rounded-xl overflow-hidden h-40">
+                      <img src={profilSejarahImage} alt="Sejarah Preview" className="w-full h-full object-cover" />
+                      <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
+                        <span className="text-white text-xs font-semibold bg-black/50 px-3 py-1 rounded-full">Preview Card Kolam Susu</span>
+                      </div>
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                      Foto Card Sejarah
+                    </label>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleProfilSejarahUpload}
+                      disabled={isUploadingProfilSejarah}
+                      className="w-full text-sm text-gray-600 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:text-white file:cursor-pointer cursor-pointer"
+                    />
+                    {isUploadingProfilSejarah && <p className="text-xs text-blue-500 mt-1 animate-pulse">⏳ Mengompres &amp; mengupload gambar...</p>}
+                    {profilSejarahImage && <p className="text-xs text-green-600 mt-1">✅ Foto card sejarah sudah di-upload.</p>}
+                  </div>
+                </div>
+              </div>
+
+              {/* Tombol Simpan Profil */}
+              <div className="max-w-2xl">
+                <button
+                  id="btn-simpan-profil"
+                  onClick={handleSimpanProfil}
+                  disabled={isSavingProfil}
+                  className="w-full flex items-center justify-center gap-2 text-white font-semibold text-sm px-6 py-3.5 rounded-xl shadow-sm transition-all hover:opacity-90 disabled:opacity-60"
+                  style={{ backgroundColor: "#198754" }}
+                >
+                  {isSavingProfil ? (
+                    <><svg className="animate-spin w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4z" /></svg> Menyimpan...</>
+                  ) : (
+                    <><IconSave /> Simpan Pengaturan Profil</>
                   )}
                 </button>
               </div>

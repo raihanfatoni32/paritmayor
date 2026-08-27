@@ -4,14 +4,11 @@
    Mencakup: Sub-Hero, Visi Misi, Geografis, Struktur Organisasi
    ========================================================= */
 
-import Link from "next/link";
+"use client";
 
-/* ── Metadata Halaman ────────────────────────────────────── */
-export const metadata = {
-  title: "Profil Kelurahan",
-  description:
-    "Profil lengkap Kelurahan Parit Mayor: sejarah, visi misi, batas wilayah geografis, dan struktur organisasi aparatur kelurahan.",
-};
+import { useState, useEffect } from "react";
+import { supabase } from "@/utils/supabase";
+import Link from "next/link";
 
 /* ── Data Bagan Struktur Organisasi ──────────────────────── */
 const strukturOrganisasi = {
@@ -63,7 +60,7 @@ function KartuOrg({ nama, jabatan, isLurah = false }) {
         aria-hidden="true"
       >
         <svg xmlns="http://www.w3.org/2000/svg" className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24">
-          <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/>
+          <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z" />
         </svg>
       </div>
       <p className={`font-semibold text-sm ${isLurah ? "text-blue-900" : "text-gray-800"}`}>{nama}</p>
@@ -76,6 +73,61 @@ function KartuOrg({ nama, jabatan, isLurah = false }) {
    HALAMAN PROFIL — Main Component
    ═══════════════════════════════════════════════════════════ */
 export default function ProfilPage() {
+  const [isLoading, setIsLoading] = useState(true);
+
+  // State gambar dari pengaturan_profil
+  const [heroImage, setHeroImage] = useState("");
+  const [sejarahImage, setSejarahImage] = useState("");
+
+  // State data demografi dari profil_kelurahan
+  const [dataStatistik, setDataStatistik] = useState({
+    penduduk: "12.450",
+    rt: "28",
+    rw: "7",
+  });
+
+  useEffect(() => {
+    const fetchData = async () => {
+      setIsLoading(true);
+      try {
+        // 1. Fetch gambar profil dari tabel pengaturan_profil
+        const { data: profilData } = await supabase
+          .from("pengaturan_profil")
+          .select("*")
+          .eq("id", 1)
+          .maybeSingle();
+
+        if (profilData) {
+          setHeroImage(profilData.hero_image || "");
+          setSejarahImage(profilData.sejarah_image || "");
+        }
+
+        // 2. Fetch data demografi dari tabel profil_kelurahan
+        const { data: demografiData } = await supabase
+          .from("profil_kelurahan")
+          .select("total_penduduk, jumlah_rt, jumlah_rw")
+          .eq("id", 1)
+          .maybeSingle();
+
+        if (demografiData) {
+          setDataStatistik({
+            penduduk: demografiData.total_penduduk
+              ? Number(demografiData.total_penduduk).toLocaleString("id-ID")
+              : "12.450",
+            rt: demografiData.jumlah_rt ? String(demografiData.jumlah_rt) : "28",
+            rw: demografiData.jumlah_rw ? String(demografiData.jumlah_rw) : "7",
+          });
+        }
+      } catch (err) {
+        console.error("Gagal memuat data halaman profil:", err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
   return (
     <div className="flex flex-col">
 
@@ -86,7 +138,11 @@ export default function ProfilPage() {
         id="hero-profil"
         aria-label="Profil & Sejarah Kelurahan Parit Mayor"
         className="relative overflow-hidden py-16 md:py-24"
-        style={{ background: "linear-gradient(135deg, #052c65 0%, #0A58CA 100%)" }}
+        style={{
+          background: heroImage
+            ? `linear-gradient(to bottom, rgba(5,44,101,0.65), rgba(5,44,101,0.8)), url('${heroImage}') center/cover no-repeat`
+            : "linear-gradient(135deg, #052c65 0%, #0A58CA 100%)",
+        }}
       >
         {/* Dekoratif grid */}
         <div className="absolute inset-0 opacity-[0.04]"
@@ -113,20 +169,22 @@ export default function ProfilPage() {
               </p>
             </div>
 
-            {/* Gambar/Ilustrasi — aerial sungai */}
-            <div className="hidden md:flex justify-end">
-              <div className="relative w-full max-w-sm h-56 rounded-2xl overflow-hidden shadow-2xl"
-                style={{ background: "linear-gradient(135deg, #064e3b, #065f46, #047857)" }}>
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="w-20 h-20 text-white/30" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <path d="M3.5 18.49l6-6.01 4 4L22 6.92l-1.41-1.41-7.09 7.97-4-4L2 16.99z"/>
-                  </svg>
-                </div>
-                <div className="absolute bottom-4 left-4 right-4 bg-black/40 backdrop-blur-sm rounded-lg px-3 py-2">
-                  <p className="text-white text-xs font-medium">Foto Aerial Sungai Kapuas — Parit Mayor</p>
+            {/* Gambar/Ilustrasi — hanya tampil jika heroImage kosong */}
+            {!heroImage && (
+              <div className="hidden md:flex justify-end">
+                <div className="relative w-full max-w-sm h-56 rounded-2xl overflow-hidden shadow-2xl"
+                  style={{ background: "linear-gradient(135deg, #064e3b, #065f46, #047857)" }}>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="w-20 h-20 text-white/30" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M3.5 18.49l6-6.01 4 4L22 6.92l-1.41-1.41-7.09 7.97-4-4L2 16.99z" />
+                    </svg>
+                  </div>
+                  <div className="absolute bottom-4 left-4 right-4 bg-black/40 backdrop-blur-sm rounded-lg px-3 py-2">
+                    <p className="text-white text-xs font-medium">Foto Aerial Sungai Kapuas — Parit Mayor</p>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
 
           </div>
         </div>
@@ -175,14 +233,24 @@ export default function ProfilPage() {
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div
             className="relative rounded-2xl overflow-hidden"
-            style={{ background: "linear-gradient(135deg, #064e3b 0%, #065f46 50%, #047857 100%)", minHeight: "280px" }}
+            style={{
+              background: sejarahImage
+                ? `url('${sejarahImage}') center/cover no-repeat`
+                : "linear-gradient(135deg, #064e3b 0%, #065f46 50%, #047857 100%)",
+              minHeight: "280px",
+            }}
           >
-            {/* Dekoratif */}
-            <div className="absolute inset-0 opacity-10" style={{
-              backgroundImage: "radial-gradient(circle at 20% 50%, #fff 0%, transparent 50%)",
-            }} aria-hidden="true" />
+            {/* Overlay gelap agar teks terbaca */}
+            <div className="absolute inset-0 bg-black/45" aria-hidden="true" />
 
-            <div className="relative p-8 md:p-12 flex flex-col justify-end h-full min-h-[280px]">
+            {/* Dekoratif (hanya tampil jika tidak ada foto) */}
+            {!sejarahImage && (
+              <div className="absolute inset-0 opacity-10" style={{
+                backgroundImage: "radial-gradient(circle at 20% 50%, #fff 0%, transparent 50%)",
+              }} aria-hidden="true" />
+            )}
+
+            <div className="relative z-10 p-8 md:p-12 flex flex-col justify-end h-full min-h-[280px]">
               <span className="inline-block bg-green-700 text-white text-xs font-bold px-3 py-1 rounded-full mb-4 w-fit">
                 Situs Sejarah
               </span>
@@ -325,14 +393,24 @@ export default function ProfilPage() {
             ))}
           </div>
 
-          {/* Info tambahan luas wilayah */}
+          {/* Info tambahan luas wilayah — DINAMIS */}
           <div className="mt-6 rounded-xl p-5 border text-center" style={{ backgroundColor: "#EBF2FF", borderColor: "#BFDBFE" }}>
-            <p className="text-gray-700 text-sm">
-              Luas total wilayah Kelurahan Parit Mayor:{" "}
-              <strong style={{ color: "#0A58CA" }}>5.42 km²</strong>, meliputi{" "}
-              <strong>28 RT</strong> dan <strong>7 RW</strong> dengan total{" "}
-              <strong>12.450 penduduk</strong>.
-            </p>
+            {isLoading ? (
+              <div className="flex items-center justify-center gap-2 text-gray-400 text-sm">
+                <svg className="animate-spin w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+                Memuat data demografi...
+              </div>
+            ) : (
+              <p className="text-gray-700 text-sm">
+                Luas total wilayah Kelurahan Parit Mayor:{" "}
+                <strong style={{ color: "#0A58CA" }}>5.42 km²</strong>, meliputi{" "}
+                <strong>{dataStatistik.rt} RT</strong> dan <strong>{dataStatistik.rw} RW</strong> dengan total{" "}
+                <strong>{dataStatistik.penduduk} penduduk</strong>.
+              </p>
+            )}
           </div>
 
         </div>
