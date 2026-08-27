@@ -8,13 +8,15 @@
    ========================================================= */
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
+import { supabase } from "@/lib/supabase";
 
 /* ── Metadata Halaman — didefinisikan di layout karena ini client component ── */
 // title: "Infografis & Data | Kelurahan Parit Mayor"
 
 /* ── Data Statistik Makro ────────────────────────────────── */
-const makroStats = [
+const defaultMakroStats = [
   {
     id: "total-penduduk",
     label: "Total Penduduk",
@@ -76,6 +78,32 @@ const dataPencaharian = [
    HALAMAN INFOGRAFIS — Main Component
    ══════════════════════════════════════════════════════════ */
 export default function InfografisPage() {
+  const [makroStats, setMakroStats] = useState(defaultMakroStats);
+
+  useEffect(() => {
+    const fetchStatistik = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("profil_kelurahan")
+          .select("total_penduduk, kepala_keluarga, jumlah_rt, jumlah_rw")
+          .eq("id", 1)
+          .maybeSingle();
+
+        if (data && !error) {
+          setMakroStats(prev => [
+            { ...prev[0], value: Number(data.total_penduduk || 0).toLocaleString("en-US") },
+            { ...prev[1], value: Number(data.kepala_keluarga || 0).toLocaleString("en-US") },
+            { ...prev[2], value: prev[2].value }, // Luas wilayah tetap
+            { ...prev[3], value: `${data.jumlah_rt || 0} / ${String(data.jumlah_rw || 0).padStart(2, '0')}` },
+          ]);
+        }
+      } catch (err) {
+        console.error("Gagal menarik data statistik:", err);
+      }
+    };
+    fetchStatistik();
+  }, []);
+
   return (
     <div className="flex flex-col">
 

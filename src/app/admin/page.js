@@ -9,6 +9,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { supabase } from "@/lib/supabase";
 
 /* ══════════════════════════════════════════════════════════
    IKON SVG — Komponen Atom
@@ -212,40 +213,96 @@ export default function AdminDashboardPage() {
   const [daftarBerita, setDaftarBerita] = useState([]);
 
   /* ── State: Kategori Dinamis ─────────────────────────── */
+  // Tambahkan baris ini di barisan deklarasi useState bagian atas komponen
   const [daftarKategori, setDaftarKategori] = useState(KATEGORI_DEFAULT);
   const [kategoriKustom, setKategoriKustom] = useState("");
   const [showKategoriBaru, setShowKategoriBaru] = useState(false);
 
   /* ── State: Sorting Tabel ───────────────────────────── */
+  /* ── State tambahan untuk mengunci id baris database ── */
+  const [rowId, setRowId] = useState(1);
   const [sortUrutan, setSortUrutan] = useState("terbaru");
 
-  /* ── useEffect: Proteksi Rute ────────────────────────── */
+
+  /* ── useEffect: Load Data dari Supabase (SUDAH DIPERBAIKI) ── */
+  /* ── useEffect: Proteksi Rute Berbasis Sesi Supabase Auth (TERKOREKSI) ── */
   useEffect(() => {
-    const loggedIn = localStorage.getItem("adminLoggedIn");
-    if (loggedIn !== "true") {
-      router.push("/admin/login");
-    } else {
-      setIsAuthed(true);
-      setAuthLoading(false);
-    }
+    const checkAdminSession = async () => {
+      try {
+        // Ambil data sesi user yang sedang aktif dari server Supabase
+        const { data: { session }, error } = await supabase.auth.getSession();
+
+        if (error || !session) {
+          console.log("Sesi tidak ditemukan atau kedaluwarsa. Alihkan ke halaman login.");
+          setIsAuthed(false);
+          router.push("/admin/login");
+        } else {
+          // Meloloskan admin masuk jika sesi valid
+          setIsAuthed(true);
+        }
+      } catch (err) {
+        console.error("Kesalahan validasi keamanan rute:", err);
+        router.push("/admin/login");
+      } finally {
+        setAuthLoading(false);
+      }
+    };
+
+    checkAdminSession();
   }, [router]);
 
-  /* ── useEffect: Load Berita & Kategori dari localStorage  */
+  /* ── useEffect: Load Data dari Supabase ── */
   useEffect(() => {
-    // Load berita
+    const loadDataSupabase = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("profil_kelurahan")
+          .select("*")
+          .eq("id", 1)
+          .maybeSingle();
+
+        if (error) {
+          console.error("Gagal memuat data dari Supabase:", error);
+          return;
+        }
+
+        if (data) {
+          setRowId(data.id);
+          setTotalPenduduk(String(data.total_penduduk || "0"));
+          setJumlahKK(String(data.kepala_keluarga || "0"));
+          setJumlahRT(String(data.jumlah_rt || "0"));
+          setJumlahRW(String(data.jumlah_rw || "0"));
+          setNilaiIKM(data.nilai_ikm || "0");
+          setPredikatIKM(data.predikat_ikm || "A");
+          setNomorWA(data.nomor_wa || "");
+          setBannerText(data.banner_text || "");
+        }
+      } catch (err) {
+        console.error("Kesalahan sistem load admin:", err);
+      }
+    };
+
+    if (isAuthed) {
+      loadDataSupabase();
+    }
+  }, [isAuthed]);
+
+
+  /* ── useEffect Bawaan Temanmu untuk Memuat Berita (Biarkan Tetap Ada) ── */
+  useEffect(() => {
     const storedBerita = localStorage.getItem("beritaData");
     if (storedBerita) {
       try { setDaftarBerita(JSON.parse(storedBerita)); } catch { setDaftarBerita([]); }
     }
-    // Load kategori kustom atau gunakan default
     const storedKategori = localStorage.getItem("kategoriData");
     if (storedKategori) {
       try {
         const parsed = JSON.parse(storedKategori);
         if (Array.isArray(parsed) && parsed.length > 0) setDaftarKategori(parsed);
-      } catch { /* gunakan default */ }
+      } catch { }
     }
   }, []);
+
 
   /* ── Handler: Perubahan Dropdown Kategori ─────────────── */
   const handleKategoriChange = (e) => {
@@ -373,19 +430,71 @@ export default function AdminDashboardPage() {
     setShowKategoriBaru(false);
   };
 
-  /* ── Handler: Simpan Data Kelurahan ───────────────────── */
-  const handleSimpan = () => {
-    const dataKelurahan = {
-      totalPenduduk, jumlahKK, jumlahRT, jumlahRW,
-      nilaiIKM, predikatIKM, nomorWA, bannerText,
-      updatedAt: new Date().toISOString(),
+  /* ── Helper Eksekusi Data ke Supabase ─────────────────────────── */
+  const simpanKeSupabase = async (payload) => {
+    const targetId = rowId ? Number(rowId) : 1;
+
+    try {
+      // Periksa apakah data dengan id ini sudah pernah ada
+      const { data: existData } = await supabase
+        .from("profil_kelurahan")
+        .select("id")
+        .eq("id", targetId)
+        .maybeSingle();
+
+      let errorEksekusi = null;
+
+      if (existData) {
+        // Jika baris sudah terbuat, lakukan UPDATE
+        const { error } = await supabase
+          .from("profil_kelurahan")
+          .update(payload)
+          .eq("id", targetId);
+        errorEksekusi = error;
+      } else {
+        // Jika baris kosong, lakukan INSERT data baru
+        const { error } = await supabase
+          .from("profil_kelurahan")
+          .insert({ id: targetId, ...payload });
+        errorEksekusi = error;
+      }
+
+      if (errorEksekusi) {
+        console.error("Supabase menolak data:", errorEksekusi);
+        alert(`❌ Gagal menyimpan! Pesan: ${errorEksekusi.message}`);
+      } else {
+        alert("✅ Data Berhasil Disimpan dan Sinkron ke Supabase!");
+      }
+    } catch (catchErr) {
+      console.error("Kesalahan koneksi:", catchErr);
+      alert(`❌ Terjadi kesalahan jaringan: ${catchErr.message}`);
+    }
+  };
+
+  /* ── Handler: Simpan Semua Data Form Kelurahan (SUDAH DIPERBAIKI) ── */
+  const handleSimpan = async () => {
+    const payloadDatabase = {
+      total_penduduk: totalPenduduk ? Number(totalPenduduk) : 0,
+      kepala_keluarga: jumlahKK ? Number(jumlahKK) : 0,
+      jumlah_rt: jumlahRT ? Number(jumlahRT) : 0,
+      jumlah_rw: jumlahRW ? Number(jumlahRW) : 0,
+      nilai_ikm: nilaiIKM || "0",
+      predikat_ikm: predikatIKM,
+      nomor_wa: nomorWA,
+      banner_text: bannerText,
+      updated_at: new Date().toISOString(),
     };
-    localStorage.setItem("dataKelurahan", JSON.stringify(dataKelurahan));
-    alert("✅ Data Kelurahan Berhasil Diperbarui!");
+
+    await simpanKeSupabase(payloadDatabase);
   };
 
   /* ── Handler: Logout ──────────────────────────────────── */
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut();
+    } catch (err) {
+      console.error("Gagal logout:", err);
+    }
     localStorage.removeItem("adminLoggedIn");
     localStorage.removeItem("adminLoginTime");
     router.push("/admin/login");

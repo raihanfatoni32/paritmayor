@@ -9,6 +9,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { supabase } from "@/lib/supabase";
 
 /* ── Ikon SVG Atoms ─────────────────────────────────────── */
 function IconShield() {
@@ -76,17 +77,24 @@ export default function LoginAdminPage() {
     setError("");
     setIsLoading(true);
 
-    // Simulasi delay autentikasi supaya terasa natural
-    await new Promise((res) => setTimeout(res, 800));
+    // Konversi input 'username' menjadi email jika user belum mengetikkan '@'
+    const emailToLogin = username.includes("@") ? username : `${username}@paritmayor.local`;
 
-    if (username === "admin" && password === "paritmayor123") {
-      // Simpan status login ke localStorage
-      localStorage.setItem("adminLoggedIn", "true");
-      localStorage.setItem("adminLoginTime", new Date().toISOString());
-      // Redirect ke dashboard admin
-      router.push("/admin");
-    } else {
-      setError("Kredensial Salah! Username atau password tidak valid.");
+    try {
+      const { data, error: authError } = await supabase.auth.signInWithPassword({
+        email: emailToLogin,
+        password: password,
+      });
+
+      if (authError) {
+        setError("Kredensial Salah! Username atau password tidak valid.");
+        setIsLoading(false);
+      } else {
+        // Redirect ke dashboard admin
+        router.push("/admin");
+      }
+    } catch (err) {
+      setError("Terjadi kesalahan sistem, silakan coba lagi nanti.");
       setIsLoading(false);
     }
   };
