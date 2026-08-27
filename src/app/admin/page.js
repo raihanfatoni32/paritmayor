@@ -9,7 +9,8 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/utils/supabase";
+import imageCompression from 'browser-image-compression';
 
 /* ══════════════════════════════════════════════════════════
    IKON SVG — Komponen Atom
@@ -147,29 +148,6 @@ function SectionHeader({ icon, title, subtitle }) {
   );
 }
 
-/* ══════════════════════════════════════════════════════════
-   Fungsi Helper — Kompresi Gambar
-   ══════════════════════════════════════════════════════════ */
-const compressImage = (file, callback) => {
-  const reader = new FileReader();
-  reader.readAsDataURL(file);
-  reader.onload = (event) => {
-    const img = new Image();
-    img.src = event.target.result;
-    img.onload = () => {
-      const canvas = document.createElement("canvas");
-      const MAX_WIDTH = 800; // Resize agar ringan
-      const scaleSize = MAX_WIDTH / img.width;
-      canvas.width = MAX_WIDTH;
-      canvas.height = img.height * scaleSize;
-      const ctx = canvas.getContext("2d");
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      // Kompres ke format WEBP dengan kualitas 70%
-      const compressedBase64 = canvas.toDataURL("image/webp", 0.7);
-      callback(compressedBase64);
-    };
-  };
-};
 
 /* ══════════════════════════════════════════════════════════
    KOMPONEN UTAMA — AdminDashboardPage
@@ -288,11 +266,20 @@ export default function AdminDashboardPage() {
   }, [isAuthed]);
 
 
-  /* ── useEffect Bawaan Temanmu untuk Memuat Berita (Biarkan Tetap Ada) ── */
+  /* ── fetchBerita: Ambil data dari Supabase ─────────────── */
+  const fetchBerita = async () => {
+    const { data, error } = await supabase
+      .from('berita')
+      .select('*')
+      .order('tanggal', { ascending: false });
+    if (!error && data) setDaftarBerita(data);
+    else if (error) console.error("Gagal memuat daftar berita:", error);
+  };
+
+  /* ── useEffect: Load Berita dari Supabase + Kategori dari localStorage ── */
   useEffect(() => {
-    const storedBerita = localStorage.getItem("beritaData");
-    if (storedBerita) {
-      try { setDaftarBerita(JSON.parse(storedBerita)); } catch { setDaftarBerita([]); }
+    if (isAuthed) {
+      fetchBerita();
     }
     const storedKategori = localStorage.getItem("kategoriData");
     if (storedKategori) {
@@ -301,7 +288,7 @@ export default function AdminDashboardPage() {
         if (Array.isArray(parsed) && parsed.length > 0) setDaftarKategori(parsed);
       } catch { }
     }
-  }, []);
+  }, [isAuthed]);
 
 
   /* ── Handler: Perubahan Dropdown Kategori ─────────────── */
@@ -316,13 +303,46 @@ export default function AdminDashboardPage() {
     }
   };
 
-  /* ── Handler: Upload Foto (Base64 via FileReader) ─────── */
-  const handleFotoUpload = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    compressImage(file, (compressedData) => {
-      setFotoBaru(compressedData);
-    });
+  /* ── Handler: Upload Foto ke Supabase Storage (dengan kompresi) ── */
+  const handleFotoUpload = async (e) => {
+    const imageFile = e.target.files[0];
+    if (!imageFile) return;
+
+    // Opsi kompresi: maks 1MB, lebar maks 1280px agar tetap HD di UI
+    const options = {
+      maxSizeMB: 1,
+      maxWidthOrHeight: 1280,
+      useWebWorker: true,
+    };
+
+    try {
+      // 1. Kompres gambar terlebih dahulu
+      const compressedFile = await imageCompression(imageFile, options);
+
+      // 2. Siapkan nama dan path file
+      const fileExt = compressedFile.name.split('.').pop() || 'jpg';
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+      const filePath = `public/${fileName}`;
+
+      // 3. Upload file yang sudah dikompres ke Supabase Storage
+      const { error } = await supabase.storage
+        .from('foto_berita')
+        .upload(filePath, compressedFile);
+
+      if (error) {
+        console.error("Gagal upload gambar:", error);
+        alert("❌ Gagal upload gambar! " + error.message);
+      } else {
+        // 4. Ambil URL publik dan simpan ke state
+        const { data: publicUrlData } = supabase.storage
+          .from('foto_berita')
+          .getPublicUrl(filePath);
+        setFotoBaru(publicUrlData.publicUrl);
+      }
+    } catch (err) {
+      console.error("Error saat kompresi gambar:", err);
+      alert("❌ Gagal memproses gambar!");
+    }
   };
 
   /* ── Handler: Reset Form ──────────────────────────────── */
@@ -337,8 +357,8 @@ export default function AdminDashboardPage() {
     setShowKategoriBaru(false);
   };
 
-  /* ── Handler: Simpan / Update Berita ─────────────────── */
-  const handleTambahBerita = () => {
+  /* ── Handler: Simpan / Update Berita ke Supabase ────────── */
+  const handleTambahBerita = async () => {
     if (!judulBaru || !ringkasanBaru) {
       alert("Judul dan ringkasan wajib diisi!");
       return;
@@ -351,7 +371,7 @@ export default function AdminDashboardPage() {
         return;
       }
       kategoriFinal = kategoriKustom;
-      // Hanya tambahkan jika belum ada di dalam daftar
+      // Simpan kategori baru ke localStorage agar persisten di dropdown
       if (!daftarKategori.includes(kategoriKustom)) {
         const updatedKategori = [...daftarKategori, kategoriKustom];
         setDaftarKategori(updatedKategori);
@@ -360,33 +380,43 @@ export default function AdminDashboardPage() {
     }
 
     const { color, gradient } = getKategoriStyle(kategoriFinal);
-    const idBaru = editId ? editId : "news-" + Date.now();
     const tanggalFinal = tanggalBaru || todayISO();
 
-    const objekBaru = {
-      id: idBaru,
+    const payload = {
       judul: judulBaru,
       ringkasan: ringkasanBaru,
       kategori: kategoriFinal,
       tanggal: tanggalFinal,
       foto: fotoBaru || "",
       kategoriColor: color,
-      gradient: gradient
+      gradient: gradient,
     };
 
-    const beritaLama = JSON.parse(localStorage.getItem("beritaData") || "[]");
-    let updateBerita;
+    let supabaseError = null;
 
     if (editId !== null) {
-      updateBerita = beritaLama.map((b) => (b.id === editId ? objekBaru : b));
+      // Mode Update
+      const { error } = await supabase
+        .from('berita')
+        .update(payload)
+        .eq('id', editId);
+      supabaseError = error;
     } else {
-      updateBerita = [objekBaru, ...beritaLama];
+      // Mode Insert
+      const { error } = await supabase
+        .from('berita')
+        .insert([payload]);
+      supabaseError = error;
     }
 
-    localStorage.setItem("beritaData", JSON.stringify(updateBerita));
-    setDaftarBerita(updateBerita);
+    if (supabaseError) {
+      console.error("Gagal menyimpan berita:", supabaseError);
+      alert("❌ Gagal menyimpan berita! " + supabaseError.message);
+      return;
+    }
 
     alert("✅ Berita berhasil disimpan!");
+    await fetchBerita();
 
     setJudulBaru("");
     setRingkasanBaru("");
@@ -411,12 +441,19 @@ export default function AdminDashboardPage() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  /* ── Handler: Hapus Berita ────────────────────────────── */
-  const handleHapus = (id) => {
+  /* ── Handler: Hapus Berita dari Supabase ─────────────── */
+  const handleHapus = async (id) => {
     if (!confirm("Yakin ingin menghapus berita ini?")) return;
-    const arr = daftarBerita.filter((b) => b.id !== id);
-    localStorage.setItem("beritaData", JSON.stringify(arr));
-    setDaftarBerita(arr);
+    const { error } = await supabase
+      .from('berita')
+      .delete()
+      .eq('id', id);
+    if (error) {
+      console.error("Gagal menghapus berita:", error);
+      alert("❌ Gagal menghapus! " + error.message);
+    } else {
+      await fetchBerita();
+    }
   };
 
   /* ── Handler: Hapus Kategori Kustom ──────────────────── */

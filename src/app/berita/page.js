@@ -8,83 +8,9 @@
 
 import Link from "next/link";
 import { useState, useEffect } from "react";
+import { supabase } from "@/utils/supabase";
 
-/* ── Data Berita ─────────────────────────────────────────── */
-const beritaFeatured = {
-  id: "kerja-bakti-hut-ri",
-  kategori: "Kegiatan Warga",
-  kategoriColor: "#0A58CA",
-  tanggal: "2026-08-11",
-  penulis: "Humas Kelurahan",
-  judul: "Kerja Bakti Akbar Menyambut HUT Kemerdekaan RI ke-81",
-  ringkasan:
-    "Seluruh warga Kelurahan Parit Mayor bersatu dalam semangat gotong royong mengikuti kegiatan kerja bakti massal membersihkan lingkungan RT/RW, drainase, dan ruang publik sebelum menyambut Hari Kemerdekaan Republik Indonesia yang ke-81.",
-  href: "/berita/kerja-bakti-hut-ri",
-  gradient: "from-blue-800 via-blue-700 to-blue-600",
-};
 
-const beritaRegular = [
-  {
-    id: "posyandu-agustus",
-    kategori: "Kesehatan",
-    kategoriColor: "#198754",
-    tanggal: "2026-08-03",
-    judul: "Jadwal Kegiatan Posyandu Balita & Lansia Bulan Agustus",
-    ringkasan:
-      "Puskesmas dan kader posyandu mengumumkan jadwal pemeriksaan kesehatan gratis bagi balita dan warga lanjut usia.",
-    gradient: "from-green-600 to-green-800",
-  },
-  {
-    id: "drainase-rw03",
-    kategori: "Pemerintahan",
-    kategoriColor: "#7C3AED",
-    tanggal: "2026-07-29",
-    judul: "Perbaikan Drainase Lingkungan RW 03 Selesai Dilaksanakan",
-    ringkasan:
-      "Sebagai bagian dari pencegahan banjir musiman, perbaikan drainase di wilayah RW 03 kini resmi selesai dikerjakan.",
-    gradient: "from-violet-600 to-violet-800",
-  },
-  {
-    id: "musrenbang",
-    kategori: "Pemerintahan",
-    kategoriColor: "#DC6803",
-    tanggal: "2026-07-21",
-    judul: "Musyawarah Perencanaan Pembangunan (Musrenbang) Kelurahan 2026",
-    ringkasan:
-      "Kelurahan Parit Mayor menggelar Musrenbang tahunan untuk menyusun program prioritas pembangunan tahun anggaran berikutnya.",
-    gradient: "from-orange-600 to-orange-800",
-  },
-  {
-    id: "penerimaan-beasiswa",
-    kategori: "Pendidikan",
-    kategoriColor: "#0891B2",
-    tanggal: "2026-07-15",
-    judul: "Pengumuman Penerimaan Beasiswa Warga Kurang Mampu Tahap II",
-    ringkasan:
-      "Kelurahan membuka pendaftaran beasiswa pendidikan bagi pelajar berprestasi dari keluarga kurang mampu. Daftar sekarang!",
-    gradient: "from-cyan-600 to-cyan-800",
-  },
-  {
-    id: "pemuda-produktif",
-    kategori: "Kegiatan Warga",
-    kategoriColor: "#0A58CA",
-    tanggal: "2026-07-08",
-    judul: "Program Pemuda Produktif: Pelatihan Keterampilan Digital",
-    ringkasan:
-      "Karang taruna dan pemerintah kelurahan berkolaborasi menggelar pelatihan desain grafis dan pemasaran digital bagi pemuda.",
-    gradient: "from-blue-600 to-indigo-700",
-  },
-  {
-    id: "imunisasi-polio",
-    kategori: "Kesehatan",
-    kategoriColor: "#198754",
-    tanggal: "2026-07-01",
-    judul: "Sub-PIN Imunisasi Polio Nasional di Kelurahan Parit Mayor",
-    ringkasan:
-      "Kelurahan bersama Puskesmas mensukseskan program imunisasi polio nasional bagi anak usia 0-7 tahun di seluruh RT.",
-    gradient: "from-emerald-600 to-green-700",
-  },
-];
 
 /* ══════════════════════════════════════════════════════════
    HELPER: Parsing Tanggal ke objek Date yang valid
@@ -148,24 +74,22 @@ export default function BeritaPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [beritaAktif, setBeritaAktif] = useState(null);
 
-  /* ── Baca localStorage, gabungkan, dan sort descending ── */
+  /* ── Fetch dari Supabase, sudah di-sort descending ── */
   useEffect(() => {
-    const stored = localStorage.getItem("beritaData");
-    let fromStorage = [];
-    if (stored) {
-      try {
-        fromStorage = JSON.parse(stored);
-      } catch {
-        fromStorage = [];
+    const loadData = async () => {
+      const { data, error } = await supabase
+        .from('berita')
+        .select('*')
+        .order('tanggal', { ascending: false });
+
+      if (error) {
+        console.error("Gagal mengambil data berita:", error);
+      } else if (data) {
+        setSemuaBerita(data);
       }
-    }
-    // Gabungkan: berita admin di depan, lalu bawaan
-    const gabungan = [...fromStorage, ...beritaRegular];
+    };
 
-    // Auto-sort: terbaru (tanggal terbesar) di atas — Descending
-    gabungan.sort((a, b) => parseTanggal(b.tanggal) - parseTanggal(a.tanggal));
-
-    setSemuaBerita(gabungan);
+    loadData();
   }, []);
 
   /* ── Logic Paginasi ──────────────────────────────────── */
