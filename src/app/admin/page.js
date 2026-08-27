@@ -78,6 +78,7 @@ function IconSave() {
    ══════════════════════════════════════════════════════════ */
 const navItems = [
   { id: "dashboard", label: "Dashboard", icon: <IconDashboard /> },
+  { id: "beranda", label: "Kelola Beranda", icon: <IconSettings /> },
   { id: "berita", label: "Kelola Berita", icon: <IconNews /> },
   { id: "infografis", label: "Data Infografis", icon: <IconChart /> },
   { id: "layanan", label: "Formulir Layanan", icon: <IconForm /> },
@@ -201,6 +202,18 @@ export default function AdminDashboardPage() {
   const [rowId, setRowId] = useState(1);
   const [sortUrutan, setSortUrutan] = useState("terbaru");
 
+  /* ────────────────────────────────────────────────────────
+     KELOMPOK D — Form Pengaturan Beranda
+     ──────────────────────────────────────────────────────── */
+  const [heroImage, setHeroImage] = useState("");
+  const [highlightLabel, setHighlightLabel] = useState("Situs Sejarah");
+  const [highlightTitle, setHighlightTitle] = useState("Kolam Susu (Kolam Teduh)");
+  const [highlightDesc, setHighlightDesc] = useState("");
+  const [highlightImage, setHighlightImage] = useState("");
+  const [isUploadingHero, setIsUploadingHero] = useState(false);
+  const [isUploadingHighlight, setIsUploadingHighlight] = useState(false);
+  const [isSavingBeranda, setIsSavingBeranda] = useState(false);
+
 
   /* ── useEffect: Load Data dari Supabase (SUDAH DIPERBAIKI) ── */
   /* ── useEffect: Proteksi Rute Berbasis Sesi Supabase Auth (TERKOREKSI) ── */
@@ -262,8 +275,25 @@ export default function AdminDashboardPage() {
 
     if (isAuthed) {
       loadDataSupabase();
+      fetchPengaturanBeranda();
     }
   }, [isAuthed]);
+
+  /* ── useEffect: Load Pengaturan Beranda dari Supabase ── */
+  const fetchPengaturanBeranda = async () => {
+    const { data } = await supabase
+      .from('pengaturan_beranda')
+      .select('*')
+      .eq('id', 1)
+      .maybeSingle();
+    if (data) {
+      setHeroImage(data.hero_image || "");
+      setHighlightLabel(data.highlight_label || "Situs Sejarah");
+      setHighlightTitle(data.highlight_title || "Kolam Susu (Kolam Teduh)");
+      setHighlightDesc(data.highlight_desc || "");
+      setHighlightImage(data.highlight_image || "");
+    }
+  };
 
 
   /* ── fetchBerita: Ambil data dari Supabase ─────────────── */
@@ -342,6 +372,75 @@ export default function AdminDashboardPage() {
     } catch (err) {
       console.error("Error saat kompresi gambar:", err);
       alert("❌ Gagal memproses gambar!");
+    }
+  };
+
+  /* ── Helper: Upload gambar ke Storage (reusable) ─────── */
+  const uploadImageToStorage = async (imageFile, setLoadingState) => {
+    const options = { maxSizeMB: 1, maxWidthOrHeight: 1280, useWebWorker: true };
+    setLoadingState(true);
+    try {
+      const compressedFile = await imageCompression(imageFile, options);
+      const fileExt = compressedFile.name.split('.').pop() || 'jpg';
+      const fileName = `beranda-${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+      const filePath = `public/${fileName}`;
+      const { error } = await supabase.storage.from('foto_berita').upload(filePath, compressedFile);
+      if (error) { alert("❌ Gagal upload: " + error.message); return null; }
+      const { data: pubData } = supabase.storage.from('foto_berita').getPublicUrl(filePath);
+      return pubData.publicUrl;
+    } catch (err) {
+      console.error("Error upload:", err);
+      alert("❌ Gagal memproses gambar!");
+      return null;
+    } finally {
+      setLoadingState(false);
+    }
+  };
+
+  /* ── Handler: Upload Hero Image ─────────────────────── */
+  const handleHeroImageUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const url = await uploadImageToStorage(file, setIsUploadingHero);
+    if (url) setHeroImage(url);
+  };
+
+  /* ── Handler: Upload Highlight Image ────────────────── */
+  const handleHighlightImageUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const url = await uploadImageToStorage(file, setIsUploadingHighlight);
+    if (url) setHighlightImage(url);
+  };
+
+  /* ── Handler: Simpan Pengaturan Beranda ─────────────── */
+  const handleSimpanBeranda = async () => {
+    setIsSavingBeranda(true);
+    const payload = {
+      hero_image: heroImage,
+      highlight_label: highlightLabel,
+      highlight_title: highlightTitle,
+      highlight_desc: highlightDesc,
+      highlight_image: highlightImage,
+      updated_at: new Date().toISOString(),
+    };
+    try {
+      const { data: existing } = await supabase
+        .from('pengaturan_beranda').select('id').eq('id', 1).maybeSingle();
+      let err;
+      if (existing) {
+        const { error } = await supabase.from('pengaturan_beranda').update(payload).eq('id', 1);
+        err = error;
+      } else {
+        const { error } = await supabase.from('pengaturan_beranda').insert({ id: 1, ...payload });
+        err = error;
+      }
+      if (err) alert("❌ Gagal menyimpan: " + err.message);
+      else alert("✅ Pengaturan Beranda berhasil disimpan!");
+    } catch (e) {
+      alert("❌ Kesalahan jaringan: " + e.message);
+    } finally {
+      setIsSavingBeranda(false);
     }
   };
 
@@ -662,6 +761,136 @@ export default function AdminDashboardPage() {
         <div className="flex-1 overflow-y-auto px-8 py-8">
 
           {/* ════════════════════════════════════════════
+              KONTEN — KELOLA BERANDA
+              ════════════════════════════════════════════ */}
+          {activeNav === "beranda" && (
+            <div className="space-y-8">
+              <div>
+                <h1 className="text-2xl font-extrabold text-gray-900 leading-tight">Pengaturan Halaman Beranda</h1>
+                <p className="text-gray-500 text-sm mt-1 max-w-xl">Ubah Hero Section dan Highlight Card. Perubahan langsung tampil di halaman utama portal.</p>
+              </div>
+
+              {/* ── Section Hero ─────────────────────────── */}
+              <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 sm:p-8 max-w-2xl">
+                <SectionHeader
+                  icon={<IconSettings />}
+                  title="Hero Section"
+                  subtitle="Atur foto background yang tampil di bagian paling atas halaman beranda."
+                />
+                <div className="border-t border-gray-100 pt-6 space-y-5">
+
+                  {/* Preview Hero Image */}
+                  {heroImage && (
+                    <div className="relative rounded-xl overflow-hidden h-40">
+                      <img src={heroImage} alt="Hero Preview" className="w-full h-full object-cover" />
+                      <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
+                        <span className="text-white text-xs font-semibold bg-black/50 px-3 py-1 rounded-full">Preview Hero</span>
+                      </div>
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                      Foto Background Hero
+                    </label>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleHeroImageUpload}
+                      disabled={isUploadingHero}
+                      className="w-full text-sm text-gray-600 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:text-white file:cursor-pointer cursor-pointer"
+                      style={{ '--file-bg': '#0A58CA' }}
+                    />
+                    {isUploadingHero && <p className="text-xs text-blue-500 mt-1 animate-pulse">⏳ Mengompres &amp; mengupload gambar...</p>}
+                    {heroImage && <p className="text-xs text-green-600 mt-1">✅ Foto hero sudah di-upload.</p>}
+                    <p className="text-xs text-gray-400 mt-1">Rekomendasi: Foto landscape minimal 1280px. Otomatis dikompres sebelum upload.</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* ── Section Sekilas Parit Mayor ──────────── */}
+              <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 sm:p-8 max-w-2xl">
+                <SectionHeader
+                  icon={<IconChart />}
+                  title="Sekilas Parit Mayor (Highlight Card)"
+                  subtitle="Atur label, judul, deskripsi, dan foto card Sekilas Parit Mayor di beranda."
+                />
+                <div className="border-t border-gray-100 pt-6 space-y-5">
+
+                  {/* Preview Highlight Image */}
+                  {highlightImage && (
+                    <div className="relative rounded-xl overflow-hidden h-40">
+                      <img src={highlightImage} alt="Highlight Preview" className="w-full h-full object-cover" />
+                      <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
+                        <span className="text-white text-xs font-semibold bg-black/50 px-3 py-1 rounded-full">Preview Highlight</span>
+                      </div>
+                    </div>
+                  )}
+
+                  <AdminInput
+                    id="input-highlight-label"
+                    label="Label (misal: Situs Sejarah)"
+                    value={highlightLabel}
+                    onChange={(e) => setHighlightLabel(e.target.value)}
+                  />
+                  <AdminInput
+                    id="input-highlight-title"
+                    label="Judul Card"
+                    value={highlightTitle}
+                    onChange={(e) => setHighlightTitle(e.target.value)}
+                  />
+                  <div>
+                    <label htmlFor="input-highlight-desc" className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                      Deskripsi
+                    </label>
+                    <textarea
+                      id="input-highlight-desc"
+                      rows={4}
+                      value={highlightDesc}
+                      onChange={(e) => setHighlightDesc(e.target.value)}
+                      className="w-full px-4 py-2.5 text-sm text-gray-900 bg-white border border-gray-200 rounded-xl focus:outline-none transition-all resize-none"
+                      onFocus={(e) => { e.target.style.boxShadow = "0 0 0 3px rgba(10,88,202,0.12)"; e.target.style.borderColor = "#0A58CA"; }}
+                      onBlur={(e) => { e.target.style.boxShadow = ""; e.target.style.borderColor = ""; }}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                      Foto Highlight Card
+                    </label>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleHighlightImageUpload}
+                      disabled={isUploadingHighlight}
+                      className="w-full text-sm text-gray-600 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:text-white file:cursor-pointer cursor-pointer"
+                    />
+                    {isUploadingHighlight && <p className="text-xs text-blue-500 mt-1 animate-pulse">⏳ Mengompres &amp; mengupload gambar...</p>}
+                    {highlightImage && <p className="text-xs text-green-600 mt-1">✅ Foto highlight sudah di-upload.</p>}
+                    <p className="text-xs text-gray-400 mt-1">Rekomendasi: Foto portrait atau landscape, minimal 800px.</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Tombol Simpan */}
+              <div className="max-w-2xl">
+                <button
+                  id="btn-simpan-beranda"
+                  onClick={handleSimpanBeranda}
+                  disabled={isSavingBeranda}
+                  className="w-full flex items-center justify-center gap-2 text-white font-semibold text-sm px-6 py-3.5 rounded-xl shadow-sm transition-all hover:opacity-90 disabled:opacity-60"
+                  style={{ backgroundColor: "#198754" }}
+                >
+                  {isSavingBeranda ? (
+                    <><svg className="animate-spin w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4z" /></svg> Menyimpan...</>
+                  ) : (
+                    <><IconSave /> Simpan Pengaturan Beranda</>
+                  )}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* ════════════════════════════════════════════
               KONTEN — KELOLA BERITA
               ════════════════════════════════════════════ */}
           {activeNav === "berita" && (
@@ -940,7 +1169,7 @@ export default function AdminDashboardPage() {
           {/* ════════════════════════════════════════════
               KONTEN — INFOGRAFIS / DEMOGRAFI
               ════════════════════════════════════════════ */}
-          {activeNav !== "berita" && (
+          {activeNav === "infografis" && (
             <>
               {/* ── Heading + Tombol Simpan ── */}
               <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-8">
