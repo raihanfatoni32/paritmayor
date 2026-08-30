@@ -180,6 +180,23 @@ export default function AdminDashboardPage() {
   const [bannerText, setBannerText] = useState("Selamat Datang di Portal Resmi Kelurahan Parit Mayor — Melayani dengan Profesional, Transparan, dan Sepenuh Hati.");
 
   /* ────────────────────────────────────────────────────────
+     KELOMPOK D — Data Diagram Infografis
+     ──────────────────────────────────────────────────────── */
+  // Jenis Kelamin
+  const [priaCount, setPriaCount] = useState("6350");
+  const [wanitaCount, setWanitaCount] = useState("6100");
+  // Pendidikan
+  const [pendidikanSd, setPendidikanSd] = useState("15");
+  const [pendidikanSmp, setPendidikanSmp] = useState("35");
+  const [pendidikanSma, setPendidikanSma] = useState("40");
+  const [pendidikanPt, setPendidikanPt] = useState("10");
+  // Mata Pencaharian
+  const [pencaharianSwasta, setPencaharianSwasta] = useState("45");
+  const [pencaharianPedagang, setPencaharianPedagang] = useState("30");
+  const [pencaharianBuruh, setPencaharianBuruh] = useState("15");
+  const [pencaharianPns, setPencaharianPns] = useState("10");
+
+  /* ────────────────────────────────────────────────────────
      KELOMPOK C — Form Kelola Berita
      ──────────────────────────────────────────────────────── */
   const [tanggalBaru, setTanggalBaru] = useState(todayISO());
@@ -254,6 +271,17 @@ export default function AdminDashboardPage() {
           setPredikatIKM(data.predikat_ikm || "A");
           setNomorWA(data.nomor_wa || "");
           setBannerText(data.banner_text || "");
+          // Data Diagram
+          if (data.pria_count !== undefined) setPriaCount(String(data.pria_count));
+          if (data.wanita_count !== undefined) setWanitaCount(String(data.wanita_count));
+          if (data.pendidikan_sd !== undefined) setPendidikanSd(String(data.pendidikan_sd));
+          if (data.pendidikan_smp !== undefined) setPendidikanSmp(String(data.pendidikan_smp));
+          if (data.pendidikan_sma !== undefined) setPendidikanSma(String(data.pendidikan_sma));
+          if (data.pendidikan_pt !== undefined) setPendidikanPt(String(data.pendidikan_pt));
+          if (data.pencaharian_swasta !== undefined) setPencaharianSwasta(String(data.pencaharian_swasta));
+          if (data.pencaharian_pedagang !== undefined) setPencaharianPedagang(String(data.pencaharian_pedagang));
+          if (data.pencaharian_buruh !== undefined) setPencaharianBuruh(String(data.pencaharian_buruh));
+          if (data.pencaharian_pns !== undefined) setPencaharianPns(String(data.pencaharian_pns));
         }
       } catch (err) {
         console.error("Kesalahan sistem load admin:", err);
@@ -508,7 +536,7 @@ export default function AdminDashboardPage() {
     }
   };
 
-  /* ── Handler: Simpan Semua Data Form Kelurahan (SUDAH DIPERBAIKI) ── */
+  /* ── Handler: Simpan Semua Data Form Kelurahan ── */
   const handleSimpan = async () => {
     const payloadDatabase = {
       total_penduduk: totalPenduduk ? Number(totalPenduduk) : 0,
@@ -519,6 +547,17 @@ export default function AdminDashboardPage() {
       predikat_ikm: predikatIKM,
       nomor_wa: nomorWA,
       banner_text: bannerText,
+      // Data Diagram Infografis
+      pria_count: priaCount ? Number(priaCount) : 0,
+      wanita_count: wanitaCount ? Number(wanitaCount) : 0,
+      pendidikan_sd: pendidikanSd ? Number(pendidikanSd) : 0,
+      pendidikan_smp: pendidikanSmp ? Number(pendidikanSmp) : 0,
+      pendidikan_sma: pendidikanSma ? Number(pendidikanSma) : 0,
+      pendidikan_pt: pendidikanPt ? Number(pendidikanPt) : 0,
+      pencaharian_swasta: pencaharianSwasta ? Number(pencaharianSwasta) : 0,
+      pencaharian_pedagang: pencaharianPedagang ? Number(pencaharianPedagang) : 0,
+      pencaharian_buruh: pencaharianBuruh ? Number(pencaharianBuruh) : 0,
+      pencaharian_pns: pencaharianPns ? Number(pencaharianPns) : 0,
       updated_at: new Date().toISOString(),
     };
 
@@ -967,34 +1006,78 @@ export default function AdminDashboardPage() {
 
               {/* ── TAB A — DATA DEMOGRAFI ── */}
               {activeTab === "demografi" && (
-                <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 sm:p-8">
-                  <SectionHeader icon={<IconChart />} title="Data Demografi" subtitle="Perbarui data kependudukan yang tampil di halaman publik." />
-                  <div className="border-t border-gray-100 pt-6">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-5">
-                      <AdminInput id="input-total-penduduk" label="Input Total Penduduk" value={totalPenduduk} onChange={(e) => setTotalPenduduk(e.target.value)} type="number"
-                        prefix={<svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z" /></svg>}
-                        helpText="Format angka (tanpa titik koma)" />
-                      <AdminInput id="input-kepala-keluarga" label="Input Kepala Keluarga" value={jumlahKK} onChange={(e) => setJumlahKK(e.target.value)} type="number"
-                        prefix={<svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="m2.25 12 8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" /></svg>} />
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-6">
-                      <AdminInput id="input-jumlah-rt" label="Input Jumlah RT" value={jumlahRT} onChange={(e) => setJumlahRT(e.target.value)} type="number"
-                        prefix={<svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21" /></svg>} />
-                      <AdminInput id="input-jumlah-rw" label="Input Jumlah RW" value={jumlahRW} onChange={(e) => setJumlahRW(e.target.value)} type="number"
-                        prefix={<svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 21h19.5m-18-18v18m2.25-18v18m13.5-18v18m2.25-18v18M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 4.5H21m-3.75 3.75h.008v.008h-.008v-.008Zm0 3h.008v.008h-.008v-.008Zm0 3h.008v.008h-.008v-.008Z" /></svg>} />
-                    </div>
-                    <div className="flex items-start gap-3 bg-blue-50 border border-blue-100 rounded-xl p-4">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-blue-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" />
-                      </svg>
-                      <div>
-                        <p className="text-blue-800 text-xs font-bold mb-0.5">Informasi Pembaruan</p>
-                        <p className="text-blue-600 text-xs leading-relaxed">
-                          Terakhir diperbarui: {new Date().toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })} oleh Admin Utama.
-                        </p>
+                <div className="space-y-6">
+
+                  {/* Card 1: Makro Kependudukan */}
+                  <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 sm:p-8">
+                    <SectionHeader icon={<IconChart />} title="Data Makro Kependudukan" subtitle="Perbarui data kependudukan yang tampil di halaman publik." />
+                    <div className="border-t border-gray-100 pt-6">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-5">
+                        <AdminInput id="input-total-penduduk" label="Input Total Penduduk" value={totalPenduduk} onChange={(e) => setTotalPenduduk(e.target.value)} type="number"
+                          prefix={<svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z" /></svg>}
+                          helpText="Format angka (tanpa titik koma)" />
+                        <AdminInput id="input-kepala-keluarga" label="Input Kepala Keluarga" value={jumlahKK} onChange={(e) => setJumlahKK(e.target.value)} type="number"
+                          prefix={<svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="m2.25 12 8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" /></svg>} />
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                        <AdminInput id="input-jumlah-rt" label="Input Jumlah RT" value={jumlahRT} onChange={(e) => setJumlahRT(e.target.value)} type="number"
+                          prefix={<svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21" /></svg>} />
+                        <AdminInput id="input-jumlah-rw" label="Input Jumlah RW" value={jumlahRW} onChange={(e) => setJumlahRW(e.target.value)} type="number"
+                          prefix={<svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 21h19.5m-18-18v18m2.25-18v18m13.5-18v18m2.25-18v18M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 4.5H21m-3.75 3.75h.008v.008h-.008v-.008Zm0 3h.008v.008h-.008v-.008Zm0 3h.008v.008h-.008v-.008Z" /></svg>} />
                       </div>
                     </div>
                   </div>
+
+                  {/* Card 2: Data Diagram Jenis Kelamin */}
+                  <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 sm:p-8">
+                    <SectionHeader icon={<IconChart />} title="Diagram: Statistik Jenis Kelamin" subtitle="Jumlah jiwa per gender. Data ini tampil di grafik batang halaman Infografis." />
+                    <div className="border-t border-gray-100 pt-6">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                        <AdminInput id="input-pria-count" label="Jumlah Laki-laki (Jiwa)" value={priaCount} onChange={(e) => setPriaCount(e.target.value)} type="number" helpText="Contoh: 6350" />
+                        <AdminInput id="input-wanita-count" label="Jumlah Perempuan (Jiwa)" value={wanitaCount} onChange={(e) => setWanitaCount(e.target.value)} type="number" helpText="Contoh: 6100" />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Card 3: Data Diagram Pendidikan */}
+                  <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 sm:p-8">
+                    <SectionHeader icon={<IconChart />} title="Diagram: Tingkat Pendidikan Warga" subtitle="Persentase (%) per jenjang pendidikan. Total idealnya 100%." />
+                    <div className="border-t border-gray-100 pt-6">
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                        <AdminInput id="input-pendidikan-sd" label="SD (%)" value={pendidikanSd} onChange={(e) => setPendidikanSd(e.target.value)} type="number" helpText="Contoh: 15" />
+                        <AdminInput id="input-pendidikan-smp" label="SMP (%)" value={pendidikanSmp} onChange={(e) => setPendidikanSmp(e.target.value)} type="number" helpText="Contoh: 35" />
+                        <AdminInput id="input-pendidikan-sma" label="SMA (%)" value={pendidikanSma} onChange={(e) => setPendidikanSma(e.target.value)} type="number" helpText="Contoh: 40" />
+                        <AdminInput id="input-pendidikan-pt" label="Perguruan Tinggi (%)" value={pendidikanPt} onChange={(e) => setPendidikanPt(e.target.value)} type="number" helpText="Contoh: 10" />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Card 4: Data Diagram Mata Pencaharian */}
+                  <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 sm:p-8">
+                    <SectionHeader icon={<IconChart />} title="Diagram: Mata Pencaharian Utama" subtitle="Persentase (%) per sektor pekerjaan. Total idealnya 100%." />
+                    <div className="border-t border-gray-100 pt-6">
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                        <AdminInput id="input-pencaharian-swasta" label="Swasta (%)" value={pencaharianSwasta} onChange={(e) => setPencaharianSwasta(e.target.value)} type="number" helpText="Contoh: 45" />
+                        <AdminInput id="input-pencaharian-pedagang" label="Pedagang (%)" value={pencaharianPedagang} onChange={(e) => setPencaharianPedagang(e.target.value)} type="number" helpText="Contoh: 30" />
+                        <AdminInput id="input-pencaharian-buruh" label="Buruh (%)" value={pencaharianBuruh} onChange={(e) => setPencaharianBuruh(e.target.value)} type="number" helpText="Contoh: 15" />
+                        <AdminInput id="input-pencaharian-pns" label="PNS/TNI/Polri (%)" value={pencaharianPns} onChange={(e) => setPencaharianPns(e.target.value)} type="number" helpText="Contoh: 10" />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Info bar */}
+                  <div className="flex items-start gap-3 bg-blue-50 border border-blue-100 rounded-xl p-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-blue-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" />
+                    </svg>
+                    <div>
+                      <p className="text-blue-800 text-xs font-bold mb-0.5">Informasi Pembaruan</p>
+                      <p className="text-blue-600 text-xs leading-relaxed">
+                        Terakhir diperbarui: {new Date().toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })} oleh Admin Utama.
+                      </p>
+                    </div>
+                  </div>
+
                 </div>
               )}
 
