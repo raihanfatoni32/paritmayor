@@ -77,12 +77,12 @@ function IconSave() {
    NAVIGASI SIDEBAR — Item Menu
    ══════════════════════════════════════════════════════════ */
 const navItems = [
-  { id: "dashboard", label: "Dashboard", icon: <IconDashboard /> },
   { id: "beranda", label: "Kelola Beranda", icon: <IconSettings /> },
   { id: "profil", label: "Kelola Profil", icon: <IconForm /> },
   { id: "berita", label: "Kelola Berita", icon: <IconNews /> },
   { id: "infografis", label: "Data Infografis", icon: <IconChart /> },
   { id: "layanan", label: "Formulir Layanan", icon: <IconForm /> },
+  { id: "kontak", label: "Kelola Kontak", icon: <IconForm /> },
 ];
 
 /* ── Default kategori ────────────────────────────────────── */
@@ -158,7 +158,7 @@ export default function AdminDashboardPage() {
   const router = useRouter();
 
   /* ── State: Navigasi & Tab ───────────────────────────── */
-  const [activeNav, setActiveNav] = useState("infografis");
+  const [activeNav, setActiveNav] = useState("beranda");
   const [activeTab, setActiveTab] = useState("demografi");
 
   /* ── State: Proteksi & Loading ───────────────────────── */
@@ -241,6 +241,24 @@ export default function AdminDashboardPage() {
   const [isUploadingProfilSejarah, setIsUploadingProfilSejarah] = useState(false);
   const [isSavingProfil, setIsSavingProfil] = useState(false);
 
+  /* ────────────────────────────────────────────────────────
+     KELOMPOK G — Pengaturan Kontak
+     ──────────────────────────────────────────────────────── */
+  const [kontakWa, setKontakWa] = useState("");
+  const [kontakEmail, setKontakEmail] = useState("");
+  const [kontakIg, setKontakIg] = useState("");
+  const [kontakFb, setKontakFb] = useState("");
+  const [isSavingKontak, setIsSavingKontak] = useState(false);
+
+  /* ────────────────────────────────────────────────────────
+     KELOMPOK H — Pengaturan Profil Admin
+     ──────────────────────────────────────────────────────── */
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [adminUsername, setAdminUsername] = useState("");
+  const [adminAvatar, setAdminAvatar] = useState("");
+  const [isUploadingAdminAvatar, setIsUploadingAdminAvatar] = useState(false);
+  const [isSavingAdminProfile, setIsSavingAdminProfile] = useState(false);
+
 
   /* ── useEffect: Load Data dari Supabase (SUDAH DIPERBAIKI) ── */
   /* ── useEffect: Proteksi Rute Berbasis Sesi Supabase Auth (TERKOREKSI) ── */
@@ -273,10 +291,10 @@ export default function AdminDashboardPage() {
      KELOMPOK F — Formulir Layanan CRUD
      ─────────────────────────────────────────────────────────── */
   const [daftarFormulirAdmin, setDaftarFormulirAdmin] = useState([]);
-  const [judulFormulir, setJudulFormulir]             = useState("");
-  const [fileFormulir, setFileFormulir]               = useState(null);
-  const [editFormulirId, setEditFormulirId]           = useState(null);
-  const [isSavingFormulir, setIsSavingFormulir]       = useState(false);
+  const [judulFormulir, setJudulFormulir] = useState("");
+  const [fileFormulir, setFileFormulir] = useState(null);
+  const [editFormulirId, setEditFormulirId] = useState(null);
+  const [isSavingFormulir, setIsSavingFormulir] = useState(false);
   const [loadingFormulirAdmin, setLoadingFormulirAdmin] = useState(false);
 
 
@@ -327,6 +345,8 @@ export default function AdminDashboardPage() {
       fetchPengaturanBeranda();
       fetchPengaturanProfil();
       fetchFormulirAdmin();
+      fetchPengaturanKontak();
+      fetchAdminProfile();
     }
   }, [isAuthed]);
 
@@ -359,6 +379,26 @@ export default function AdminDashboardPage() {
     }
   };
 
+  /* ── useEffect: Load Pengaturan Kontak dari Supabase ── */
+  const fetchPengaturanKontak = async () => {
+    const { data } = await supabase.from('pengaturan_kontak').select('*').eq('id', 1).maybeSingle();
+    if (data) {
+      setKontakWa(data.wa || "");
+      setKontakEmail(data.email || "");
+      setKontakIg(data.ig || "");
+      setKontakFb(data.fb || "");
+    }
+  };
+
+  /* ── useEffect: Load Profil Admin dari Supabase ── */
+  const fetchAdminProfile = async () => {
+    const { data } = await supabase.from('admin_profile').select('*').eq('id', 1).maybeSingle();
+    if (data) {
+      setAdminUsername(data.username || "");
+      setAdminAvatar(data.avatar || "");
+    }
+  };
+
 
   /* ── fetchFormulirAdmin: Ambil data dari Supabase ────────── */
   const fetchFormulirAdmin = async () => {
@@ -379,12 +419,12 @@ export default function AdminDashboardPage() {
 
     setIsSavingFormulir(true);
     try {
-      let fileUrl  = null;
+      let fileUrl = null;
       let ukuranFile = null;
 
       /* Upload file jika ada file baru yang dipilih */
       if (fileFormulir) {
-        const fileExt  = fileFormulir.name.split(".").pop();
+        const fileExt = fileFormulir.name.split(".").pop();
         const fileName = `formulir-${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
         const filePath = `public/${fileName}`;
 
@@ -408,8 +448,8 @@ export default function AdminDashboardPage() {
 
       const payload = {
         judul: judulFormulir.trim(),
-        ...(fileUrl     && { file_url:    fileUrl }),
-        ...(ukuranFile  && { ukuran_file: ukuranFile }),
+        ...(fileUrl && { file_url: fileUrl }),
+        ...(ukuranFile && { ukuran_file: ukuranFile }),
         updated_at: new Date().toISOString(),
       };
 
@@ -645,6 +685,63 @@ export default function AdminDashboardPage() {
       alert("❌ Kesalahan jaringan: " + e.message);
     } finally {
       setIsSavingProfil(false);
+    }
+  };
+
+  /* ── Handler: Simpan Pengaturan Kontak ─────────────── */
+  const handleSimpanKontak = async () => {
+    setIsSavingKontak(true);
+    const payload = { wa: kontakWa, email: kontakEmail, ig: kontakIg, fb: kontakFb, updated_at: new Date().toISOString() };
+    try {
+      const { data: existing } = await supabase.from('pengaturan_kontak').select('id').eq('id', 1).maybeSingle();
+      let err;
+      if (existing) {
+        const { error } = await supabase.from('pengaturan_kontak').update(payload).eq('id', 1);
+        err = error;
+      } else {
+        const { error } = await supabase.from('pengaturan_kontak').insert({ id: 1, ...payload });
+        err = error;
+      }
+      if (err) alert("❌ Gagal menyimpan kontak: " + err.message);
+      else alert("✅ Pengaturan Kontak berhasil disimpan!");
+    } catch (e) {
+      alert("❌ Kesalahan jaringan: " + e.message);
+    } finally {
+      setIsSavingKontak(false);
+    }
+  };
+
+  /* ── Handler: Upload Avatar Admin ──────────────────── */
+  const handleAdminAvatarUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const url = await uploadImageToStorage(file, setIsUploadingAdminAvatar);
+    if (url) setAdminAvatar(url);
+  };
+
+  /* ── Handler: Simpan Profil Admin ─────────────── */
+  const handleSimpanAdminProfile = async () => {
+    setIsSavingAdminProfile(true);
+    const payload = { username: adminUsername, avatar: adminAvatar, updated_at: new Date().toISOString() };
+    try {
+      const { data: existing } = await supabase.from('admin_profile').select('id').eq('id', 1).maybeSingle();
+      let err;
+      if (existing) {
+        const { error } = await supabase.from('admin_profile').update(payload).eq('id', 1);
+        err = error;
+      } else {
+        const { error } = await supabase.from('admin_profile').insert({ id: 1, ...payload });
+        err = error;
+      }
+      if (err) alert("❌ Gagal menyimpan profil admin: " + err.message);
+      else {
+        alert("✅ Profil Admin berhasil disimpan!");
+        setIsProfileModalOpen(false);
+      }
+    } catch (e) {
+      alert("❌ Kesalahan jaringan: " + e.message);
+    } finally {
+      setIsSavingAdminProfile(false);
     }
   };
 
@@ -967,8 +1064,14 @@ export default function AdminDashboardPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 5.25h.008v.008H12v-.008Z" />
               </svg>
             </button>
-            <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold"
-              style={{ background: "linear-gradient(135deg, #0A58CA, #052c65)" }}>A</div>
+            <button 
+              onClick={() => setIsProfileModalOpen(true)}
+              className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold hover:opacity-80 overflow-hidden transition-opacity"
+              style={{ background: "linear-gradient(135deg, #0A58CA, #052c65)" }}
+              aria-label="Edit Profil Admin"
+            >
+              {adminAvatar ? <img src={adminAvatar} alt="Admin" className="w-full h-full object-cover" /> : "A"}
+            </button>
           </div>
         </header>
 
@@ -1677,6 +1780,38 @@ export default function AdminDashboardPage() {
           )}
 
           {/* ════════════════════════════════════════════
+              KONTEN — KELOLA KONTAK
+              ════════════════════════════════════════════ */}
+          {activeNav === "kontak" && (
+            <div className="space-y-8">
+              <div>
+                <h1 className="text-2xl font-extrabold text-gray-900 leading-tight">Pengaturan Kontak & Media Sosial</h1>
+                <p className="text-gray-500 text-sm mt-1 max-w-xl">Ubah informasi kontak yang tampil pada halaman Layanan dan Kontak.</p>
+              </div>
+
+              <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 sm:p-8 max-w-2xl">
+                <SectionHeader icon={<IconSettings />} title="Informasi Kontak" subtitle="Masukkan nomor WA (tanpa 0 di depan, misal: 62857...), Email, dan nama akun sosmed." />
+                <div className="border-t border-gray-100 pt-6 space-y-5">
+                  <AdminInput id="input-kontak-wa" label="Nomor WhatsApp" value={kontakWa} onChange={(e) => setKontakWa(e.target.value)} type="text" helpText="Contoh: 6285732973097 (Gunakan awalan 62)" />
+                  <AdminInput id="input-kontak-email" label="Alamat Email" value={kontakEmail} onChange={(e) => setKontakEmail(e.target.value)} type="email" helpText="Contoh: kel.paritmayor@pontianak.go.id" />
+                  <AdminInput id="input-kontak-ig" label="Akun Instagram" value={kontakIg} onChange={(e) => setKontakIg(e.target.value)} type="text" helpText="Username tanpa @, contoh: kelurahanparitmayor" />
+                  <AdminInput id="input-kontak-fb" label="Akun Facebook" value={kontakFb} onChange={(e) => setKontakFb(e.target.value)} type="text" helpText="Username / Nama akun facebook" />
+                </div>
+              </div>
+
+              <div className="max-w-2xl">
+                <button id="btn-simpan-kontak" onClick={handleSimpanKontak} disabled={isSavingKontak}
+                  className="w-full flex items-center justify-center gap-2 text-white font-semibold text-sm px-6 py-3.5 rounded-xl shadow-sm transition-all hover:opacity-90 disabled:opacity-60"
+                  style={{ backgroundColor: "#198754" }}>
+                  {isSavingKontak ? (
+                    <><svg className="animate-spin w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4z" /></svg> Menyimpan...</>
+                  ) : <><IconSave /> Simpan Pengaturan Kontak</>}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* ════════════════════════════════════════════
               KONTEN — INFOGRAFIS / DEMOGRAFI
               ════════════════════════════════════════════ */}
           {activeNav === "infografis" && (
@@ -1872,6 +2007,45 @@ export default function AdminDashboardPage() {
         </div>
         {/* ── End Body Konten ── */}
       </main>
+
+      {/* ── MODAL EDIT PROFIL ADMIN ── */}
+      {isProfileModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden relative">
+            <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
+              <h3 className="text-gray-900 font-bold text-lg">Edit Profil Admin</h3>
+              <button onClick={() => setIsProfileModalOpen(false)} className="text-gray-400 hover:text-gray-600 transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+              </button>
+            </div>
+            <div className="p-6 space-y-5">
+              <div className="flex flex-col items-center gap-3">
+                <div className="w-20 h-20 rounded-full bg-gray-100 border border-gray-200 overflow-hidden flex items-center justify-center">
+                  {adminAvatar ? (
+                    <img src={adminAvatar} alt="Avatar" className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-gray-400 text-xl font-bold">A</span>
+                  )}
+                </div>
+                <div>
+                  <label htmlFor="input-avatar-admin" className="cursor-pointer text-xs font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition-colors inline-block">
+                    {isUploadingAdminAvatar ? "Mengupload..." : "Ganti Foto Profil"}
+                  </label>
+                  <input id="input-avatar-admin" type="file" accept="image/*" className="hidden" onChange={handleAdminAvatarUpload} disabled={isUploadingAdminAvatar} />
+                </div>
+              </div>
+              <AdminInput id="input-admin-username" label="Username Admin" value={adminUsername} onChange={(e) => setAdminUsername(e.target.value)} type="text" />
+            </div>
+            <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-3">
+              <button onClick={() => setIsProfileModalOpen(false)} className="px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-200 rounded-lg transition-colors">Batal</button>
+              <button onClick={handleSimpanAdminProfile} disabled={isSavingAdminProfile} className="px-4 py-2 text-sm font-semibold text-white bg-[#0A58CA] hover:opacity-90 rounded-lg transition-all flex items-center gap-2">
+                {isSavingAdminProfile ? "Menyimpan..." : "Simpan Profil"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

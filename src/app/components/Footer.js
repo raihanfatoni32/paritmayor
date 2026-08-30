@@ -3,7 +3,10 @@
    Footer biru gelap 4 kolom yang konsisten di semua halaman
    ========================================================= */
 
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 /* ── Ikon Instansi ──────────────────────────────────────── */
 function BuildingIcon() {
@@ -32,6 +35,9 @@ function SosmedLink({ href, label }) {
    KOMPONEN UTAMA FOOTER
    ══════════════════════════════════════════════════════════ */
 export default function Footer() {
+  const pathname = usePathname();
+  if (pathname.startsWith("/admin")) return null;
+
   return (
     <footer
       aria-label="Footer Kelurahan Parit Mayor"

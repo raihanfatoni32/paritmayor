@@ -222,7 +222,16 @@ export default function LayananPage() {
     }
   };
 
-  useEffect(() => { fetchFormulir(); }, []);
+  const [waNomor, setWaNomor] = useState("6285732973097");
+
+  useEffect(() => { 
+    fetchFormulir(); 
+    const fetchWa = async () => {
+      const { data } = await supabase.from("pengaturan_kontak").select("wa").eq("id", 1).maybeSingle();
+      if (data?.wa) setWaNomor(data.wa);
+    };
+    fetchWa();
+  }, []);
 
   /* ── State Form Pengaduan ─────────────────────────────── */
   const [formData, setFormData] = useState({
@@ -277,9 +286,8 @@ export default function LayananPage() {
       "_Laporan dikirim melalui Portal Resmi Kelurahan Parit Mayor_",
     ].join("\n");
 
-    const nomorWA  = "6285732973097";
     const pesanEnc = encodeURIComponent(pesan);
-    const waUrl    = `https://wa.me/${nomorWA}?text=${pesanEnc}`;
+    const waUrl    = `https://wa.me/${waNomor}?text=${pesanEnc}`;
 
     window.open(waUrl, "_blank", "noopener,noreferrer");
     setSubmitted(true);

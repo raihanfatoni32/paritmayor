@@ -7,8 +7,9 @@
    ========================================================= */
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
+import { supabase } from "@/utils/supabase";
 
 /* ── Data Informasi Kontak Resmi ─────────────────────────── */
 const kontakInfo = [
@@ -98,6 +99,36 @@ export default function KontakPage() {
   const [form, setForm] = useState({ nama: "", nik: "", domisili: "", laporan: "" });
   const [errors, setErrors] = useState({});
   const [submitted, setSubmitted] = useState(false);
+  const [kontakList, setKontakList] = useState(kontakInfo);
+
+  useEffect(() => {
+    const fetchKontak = async () => {
+      const { data } = await supabase.from("pengaturan_kontak").select("*").eq("id", 1).maybeSingle();
+      if (data) {
+        setKontakList(prev => {
+          const newList = [...prev];
+          if (data.wa) {
+            newList[0].value = data.wa;
+            newList[0].href = "https://wa.me/" + data.wa;
+          }
+          if (data.email) {
+            newList[1].value = data.email;
+            newList[1].href = "mailto:" + data.email;
+          }
+          if (data.ig) {
+            newList[2].value = "@" + data.ig;
+            newList[2].href = "https://instagram.com/" + data.ig;
+          }
+          if (data.fb) {
+            newList[3].value = data.fb;
+            newList[3].href = "https://facebook.com/" + data.fb;
+          }
+          return newList;
+        });
+      }
+    };
+    fetchKontak();
+  }, []);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -190,13 +221,13 @@ export default function KontakPage() {
               </h2>
 
               <div className="space-y-4">
-                {kontakInfo.map((k) => (
+                {kontakList.map((k) => (
                   <a
                     key={k.id}
                     id={`kontak-${k.id}`}
                     href={k.href}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                    target={k.href?.startsWith('mailto:') ? undefined : "_blank"}
+                    rel={k.href?.startsWith('mailto:') ? undefined : "noopener noreferrer"}
                     className="flex items-center gap-4 p-4 rounded-2xl border border-gray-100 hover:shadow-md transition-all duration-200 group"
                     style={{ backgroundColor: k.bg }}
                   >

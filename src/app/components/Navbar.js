@@ -43,6 +43,8 @@ export default function Navbar() {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
 
+  if (pathname.startsWith("/admin")) return null;
+
   /* Tentukan apakah link aktif — exact match untuk beranda,
      prefix match untuk sub-halaman lain */
   const isActive = (href) => {
