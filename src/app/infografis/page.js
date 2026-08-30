@@ -359,46 +359,6 @@ export default function InfografisPage() {
         </div>
       </section>
 
-      {/* ════════════════════════════════════════════════════
-          5. UNDUH LAPORAN
-          ════════════════════════════════════════════════════ */}
-      <section id="unduh-laporan" className="py-8 pb-14" style={{ backgroundColor: "#F8F9FA" }}>
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-          <motion.div
-            variants={cardVariants}
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true }}
-            className="rounded-2xl p-6 sm:p-8 relative overflow-hidden flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6"
-            style={{ backgroundColor: "#D1F5E0", border: "1px solid #A7F3D0" }}
-          >
-            <div className="absolute right-6 bottom-0 opacity-10" aria-hidden="true">
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-32 h-32 text-green-800" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"/>
-              </svg>
-            </div>
-            <div className="relative">
-              <h2 className="text-lg sm:text-xl font-extrabold text-gray-900 mb-2">Butuh Data Lebih Rinci?</h2>
-              <p className="text-gray-600 text-sm max-w-md">
-                Unduh laporan demografi lengkap Kelurahan Parit Mayor tahun ini dalam format PDF untuk keperluan analisis atau pelaporan.
-              </p>
-            </div>
-            <button
-              type="button"
-              id="btn-unduh-laporan"
-              className="relative flex-shrink-0 flex items-center gap-2.5 text-white font-bold text-sm px-6 py-3 rounded-xl shadow-md hover:opacity-90 hover:shadow-lg transition-all"
-              style={{ backgroundColor: "#198754" }}
-              onClick={() => alert("Mengunduh Laporan Demografi Parit Mayor 2024.pdf...")}
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" aria-hidden="true">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
-              </svg>
-              Unduh Laporan (PDF)
-            </button>
-          </motion.div>
-        </div>
-      </section>
-
     </div>
   );
 }

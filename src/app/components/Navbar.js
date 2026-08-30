@@ -5,17 +5,18 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 
 /* ── Daftar menu navigasi ──────────────────────────────── */
 const navLinks = [
-  { href: "/",          label: "Beranda" },
-  { href: "/profil",    label: "Profil" },
-  { href: "/layanan",   label: "Layanan" },
-  { href: "/infografis",label: "Infografis" },
-  { href: "/berita",    label: "Berita" },
-  { href: "/kontak",    label: "Kontak" },
+  { href: "/", label: "Beranda" },
+  { href: "/profil", label: "Profil" },
+  { href: "/layanan", label: "Layanan" },
+  { href: "/infografis", label: "Infografis" },
+  { href: "/berita", label: "Berita" },
+  { href: "/kontak", label: "Kontak" },
 ];
 
 /* ── Ikon Hamburger ─────────────────────────────────────── */
@@ -33,20 +34,13 @@ function IconMenu({ open }) {
   );
 }
 
-/* ── Logo SVG Instansi ──────────────────────────────────── */
-function LogoIcon() {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-      <path d="M2 22V12L12 2l10 10v10H2zm2-2h5v-5h6v5h5v-9.17L12 4.83 4 12.83V20z"/>
-    </svg>
-  );
-}
+
 
 /* ══════════════════════════════════════════════════════════
    KOMPONEN UTAMA NAVBAR
    ══════════════════════════════════════════════════════════ */
 export default function Navbar() {
-  const pathname  = usePathname();
+  const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
 
   /* Tentukan apakah link aktif — exact match untuk beranda,
@@ -67,13 +61,15 @@ export default function Navbar() {
             className="flex items-center gap-2.5 group"
             aria-label="Beranda Kelurahan Parit Mayor"
           >
-            <span
-              className="flex-shrink-0 rounded-lg p-1.5 text-white"
-              style={{ backgroundColor: "#0A58CA" }}
-              aria-hidden="true"
-            >
-              <LogoIcon />
-            </span>
+            {/* Logo kelurahan — ganti /logo-parit-mayor.svg dengan file logo asli Anda */}
+            <Image
+              src="/logo-paritmayor.png"
+              alt="Logo Kelurahan Parit Mayor"
+              width={40}
+              height={40}
+              className="flex-shrink-0 rounded-lg object-contain"
+              priority
+            />
             <span className="text-[15px] font-bold text-gray-800 leading-tight group-hover:text-[#0A58CA] transition-colors">
               Kelurahan Parit Mayor
             </span>
