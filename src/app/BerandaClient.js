@@ -7,7 +7,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/utils/supabase";
 import Link from "next/link";
 
 /* ── Data Statistik Kependudukan ─────────────────────────── */
@@ -66,79 +66,81 @@ const statistik = [
   },
 ];
 
-/* ── Data Berita Terkini ──────────────────────────────────── */
-const beritaList = [
-  {
-    id: "kerja-bakti",
-    kategori: "Kegiatan Warga",
-    kategoriColor: "#0A58CA",
-    tanggal: "11 Agt 2026",
-    judul: "Kerja Bakti Akbar Menyambut HUT Kemerdekaan RI ke-81",
-    ringkasan:
-      "Seluruh warga Parit Mayor bersatu dalam kegiatan kerja bakti massal membersihkan lingkungan RT/RW sebelum menyambut Hari Kemerdekaan.",
-    href: "/berita/kerja-bakti-hut-ri",
-    gradient: "from-blue-600 to-blue-800",
-  },
-  {
-    id: "posyandu",
-    kategori: "Kesehatan",
-    kategoriColor: "#198754",
-    tanggal: "03 Agt 2026",
-    judul: "Jadwal Kegiatan Posyandu Balita & Lansia Bulan Ini",
-    ringkasan:
-      "Puskesmas dan kader posyandu mengumumkan jadwal pemeriksaan kesehatan gratis bagi balita dan warga lanjut usia di setiap RW.",
-    href: "/berita/posyandu-agustus",
-    gradient: "from-green-600 to-green-800",
-  },
-];
-
 /* ═══════════════════════════════════════════════════════════
    HALAMAN BERANDA — Main Component
    ═══════════════════════════════════════════════════════════ */
 export default function BerandaClient() {
   const [dataStatistik, setDataStatistik] = useState(statistik);
-  const [dataBerita, setDataBerita] = useState(beritaList);
+  const [dataBerita, setDataBerita] = useState([]);
   const [dataIKM, setDataIKM] = useState({ nilaiIKM: "98.750", predikatIKM: "A" });
   const [dataBanner, setDataBanner] = useState("Melayani masyarakat dengan transparan, inovatif, dan sepenuh hati. Temukan informasi layanan publik, berita, dan program unggulan di kelurahan kami.");
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Di dalam fungsi utama komponen halaman depan kamu:
-  /* ── useEffect: Mengambil Data dari Supabase (VERSI SEMPURNA) ── */
+  // State untuk data pengaturan beranda (Hero & Sekilas)
+  const [dataBeranda, setDataBeranda] = useState({
+    hero_image: "",
+    highlight_label: "Situs Sejarah",
+    highlight_title: "Kolam Susu (Kolam Teduh)",
+    highlight_desc: "Dahulu bernama Kolam Susu, kini dikenal sebagai Kolam Teduh, sebuah kawasan bersejarah di jantung Kelurahan Parit Mayor yang menjadi identitas budaya dan kebanggaan masyarakat setempat.",
+    highlight_image: "",
+  });
+
   useEffect(() => {
-    const ambilDataTerbaru = async () => {
+    const fetchAll = async () => {
+      setIsLoading(true);
       try {
-        const { data, error } = await supabase
+        // 1. Fetch data profil kelurahan
+        const { data: profilData } = await supabase
           .from('profil_kelurahan')
           .select('*')
           .eq('id', 1)
           .maybeSingle();
 
-        if (error) {
-          console.error("Gagal mengambil data dari Supabase:", error);
-          return;
-        }
-
-        if (data) {
-          // Memperbarui state dataStatistik yang benar agar angka di UI Beranda berubah
-          setDataStatistik(prevStatistik => [
-            { ...prevStatistik[0], value: data.total_penduduk || "0" },
-            { ...prevStatistik[1], value: data.kepala_keluarga || "0" },
-            { ...prevStatistik[2], value: prevStatistik[2].value }, // Luas wilayah tetap
-            { ...prevStatistik[3], value: `${data.jumlah_rt || "0"} / ${data.jumlah_rw || "0"}` },
+        if (profilData) {
+          setDataStatistik(prev => [
+            { ...prev[0], value: profilData.total_penduduk || "0" },
+            { ...prev[1], value: profilData.kepala_keluarga || "0" },
+            { ...prev[2], value: prev[2].value },
+            { ...prev[3], value: `${profilData.jumlah_rt || "0"} / ${profilData.jumlah_rw || "0"}` },
           ]);
-
-          setDataIKM({
-            nilaiIKM: data.nilai_ikm || "0",
-            predikatIKM: data.predikat_ikm || "-"
-          });
-
-          setDataBanner(data.banner_text || "");
+          setDataIKM({ nilaiIKM: profilData.nilai_ikm || "0", predikatIKM: profilData.predikat_ikm || "-" });
+          setDataBanner(profilData.banner_text || "");
         }
+
+        // 2. Fetch pengaturan beranda
+        const { data: berandaData } = await supabase
+          .from('pengaturan_beranda')
+          .select('*')
+          .eq('id', 1)
+          .maybeSingle();
+
+        if (berandaData) {
+          setDataBeranda({
+            hero_image: berandaData.hero_image || "",
+            highlight_label: berandaData.highlight_label || "Situs Sejarah",
+            highlight_title: berandaData.highlight_title || "Kolam Susu (Kolam Teduh)",
+            highlight_desc: berandaData.highlight_desc || "",
+            highlight_image: berandaData.highlight_image || "",
+          });
+        }
+
+        // 3. Fetch 2 berita terbaru
+        const { data: beritaData } = await supabase
+          .from('berita')
+          .select('*')
+          .order('tanggal', { ascending: false })
+          .limit(2);
+
+        if (beritaData) setDataBerita(beritaData);
+
       } catch (err) {
         console.error("Kesalahan sistem halaman depan:", err);
+      } finally {
+        setIsLoading(false);
       }
     };
 
-    ambilDataTerbaru();
+    fetchAll();
   }, []);
 
 
@@ -155,7 +157,9 @@ export default function BerandaClient() {
         aria-label="Selamat datang di Kelurahan Parit Mayor"
         className="relative overflow-hidden"
         style={{
-          background: "linear-gradient(135deg, #052c65 0%, #0A58CA 60%, #0846a8 100%)",
+          background: dataBeranda.hero_image
+            ? `linear-gradient(to bottom, rgba(5,44,101,0.6), rgba(5,44,101,0.75)), url('${dataBeranda.hero_image}') center/cover no-repeat`
+            : "linear-gradient(135deg, #052c65 0%, #0A58CA 60%, #0846a8 100%)",
           minHeight: "520px",
         }}
       >
@@ -220,69 +224,7 @@ export default function BerandaClient() {
         </div>
       </section>
 
-      {/* ════════════════════════════════════════════════════
-          2. SAMBUTAN LURAH — Foto + Teks formal 2 kolom
-          ════════════════════════════════════════════════════ */}
-      <section
-        id="sambutan-lurah"
-        aria-labelledby="heading-sambutan"
-        className="bg-white py-16 md:py-20"
-      >
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-10 lg:gap-16 items-center">
 
-            {/* Kolom Kiri — Foto Lurah */}
-            <div className="relative">
-              <div className="relative rounded-2xl overflow-hidden shadow-2xl aspect-[4/5] max-w-sm mx-auto md:mx-0"
-                style={{ background: "linear-gradient(135deg, #0A58CA, #052c65)" }}>
-                {/* Placeholder foto Lurah — gradient avatar */}
-                <div className="absolute inset-0 flex flex-col items-center justify-end pb-6">
-                  <div className="w-32 h-32 rounded-full bg-white/20 border-4 border-white/40 flex items-center justify-center mb-4">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="w-16 h-16 text-white/80" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z" />
-                    </svg>
-                  </div>
-                </div>
-                {/* Dekoratif lingkaran */}
-                <div className="absolute top-4 right-4 w-24 h-24 rounded-full border-4 border-white/10" aria-hidden="true" />
-                <div className="absolute top-8 right-8 w-16 h-16 rounded-full border-4 border-white/10" aria-hidden="true" />
-              </div>
-              {/* Badge nama Lurah */}
-              <div className="absolute -bottom-4 left-1/2 md:left-8 -translate-x-1/2 md:translate-x-0 bg-white rounded-xl shadow-lg px-5 py-3 text-center min-w-[200px]">
-                <p className="font-bold text-gray-900 text-sm">Bpk. Ahmad Rival, S.STP</p>
-                <p className="text-gray-500 text-xs">Lurah Parit Mayor</p>
-              </div>
-            </div>
-
-            {/* Kolom Kanan — Teks Sambutan */}
-            <div className="pt-8 md:pt-0">
-              {/* Quote mark */}
-              <div className="text-5xl font-serif mb-2 leading-none" style={{ color: "#0A58CA" }} aria-hidden="true">"</div>
-              <p className="text-xs font-semibold tracking-widest uppercase mb-2" style={{ color: "#198754" }}>
-                Sambutan Kepala Kelurahan
-              </p>
-              <h2 id="heading-sambutan" className="text-2xl sm:text-3xl font-extrabold text-gray-900 leading-tight mb-5">
-                Membangun Parit Mayor yang Maju, Sejahtera, dan Berbudaya.
-              </h2>
-              <p className="text-gray-600 text-sm sm:text-base leading-relaxed mb-4">
-                Assalamualaikum Warahmatullahi Wabarakatuh. Puji syukur kita panjatkan ke
-                hadirat Tuhan Yang Maha Esa atas rahmat dan karunianya. Selamat datang di
-                portal resmi Kelurahan Parit Mayor.
-              </p>
-              <p className="text-gray-600 text-sm sm:text-base leading-relaxed mb-6">
-                Portal ini hadir sebagai wujud komitmen transparansi dan peningkatan kualitas
-                pelayanan publik di era digital. Melalui platform ini, kami berharap warga
-                dapat mengakses informasi layanan administrasi, program pembangunan, serta
-                berbagai fasilitas kelurahan dengan lebih mudah, cepat, dan efisien.
-              </p>
-              <Link href="/profil" className="inline-flex items-center gap-2 font-semibold text-sm transition-colors hover:underline" style={{ color: "#0A58CA" }}>
-                Lihat Profil Lengkap →
-              </Link>
-            </div>
-
-          </div>
-        </div>
-      </section>
 
       {/* ════════════════════════════════════════════════════
           3. SEKILAS PARIT MAYOR — Cagar budaya Kolam Susu
@@ -320,25 +262,26 @@ export default function BerandaClient() {
               </Link>
             </div>
 
-            {/* Kolom Kanan — Kolam Susu highlight card */}
-            <div className="relative rounded-2xl overflow-hidden shadow-xl"
-              style={{ background: "linear-gradient(135deg, #064e3b, #065f46, #047857)", minHeight: "300px" }}>
+            {/* Kolom Kanan — Highlight card (dinamis) */}
+            <div
+              className="relative rounded-2xl overflow-hidden shadow-xl"
+              style={{
+                background: dataBeranda.highlight_image
+                  ? `url('${dataBeranda.highlight_image}') center/cover no-repeat`
+                  : "linear-gradient(135deg, #064e3b, #065f46, #047857)",
+                minHeight: "300px",
+              }}
+            >
+              {/* Overlay gelap agar teks terbaca */}
+              <div className="absolute inset-0 bg-black/40" aria-hidden="true" />
               <div className="absolute inset-0 flex flex-col justify-end p-6">
-                <span className="inline-block bg-green-700/80 text-white text-xs font-bold px-3 py-1 rounded-full mb-3 w-fit">
-                  Situs Sejarah
+                <span className="relative z-10 inline-block bg-green-700/80 text-white text-xs font-bold px-3 py-1 rounded-full mb-3 w-fit">
+                  {dataBeranda.highlight_label}
                 </span>
-                <h3 className="text-white text-xl font-bold mb-2">Kolam Susu (Kolam Teduh)</h3>
-                <p className="text-green-100 text-sm leading-relaxed">
-                  Dahulu bernama Kolam Susu, kini dikenal sebagai Kolam Teduh, sebuah kawasan
-                  bersejarah di jantung Kelurahan Parit Mayor yang menjadi identitas budaya dan
-                  kebanggaan masyarakat setempat.
+                <h3 className="relative z-10 text-white text-xl font-bold mb-2">{dataBeranda.highlight_title}</h3>
+                <p className="relative z-10 text-green-100 text-sm leading-relaxed">
+                  {dataBeranda.highlight_desc}
                 </p>
-              </div>
-              {/* Dekoratif pohon/alam */}
-              <div className="absolute top-6 right-6 opacity-20">
-                <svg xmlns="http://www.w3.org/2000/svg" className="w-24 h-24 text-white" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="M17 8C8 10 5.9 16.17 3.82 21h2.41l1-2.5c.27.08.57.12.87.12.9 0 1.71-.34 2.33-.88A3.988 3.988 0 0 0 12 19c.51 0 .99-.1 1.44-.27.62.54 1.43.88 2.33.88.3 0 .6-.04.87-.12l1 2.5h2.41C17.1 16.17 15 10 6 8h11z" />
-                </svg>
               </div>
             </div>
 
@@ -440,39 +383,57 @@ export default function BerandaClient() {
             </Link>
           </div>
 
-          {/* Grid 2 kartu berita */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            {dataBerita.map((berita) => (
-              <article
-                key={berita.id}
-                id={`berita-${berita.id}`}
-                className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 border border-gray-100 group"
-              >
-                {/* Thumbnail gradient */}
-                <div className={`relative h-48 bg-gradient-to-br ${berita.gradient} flex items-end p-4`}>
-                  <span
-                    className="inline-block text-white text-xs font-bold px-3 py-1 rounded-full"
-                    style={{ backgroundColor: berita.kategoriColor }}
+          {/* Grid 2 kartu berita (dinamis dari Supabase) */}
+          {isLoading ? (
+            <div className="flex items-center justify-center py-16 gap-3 text-gray-400">
+              <svg className="animate-spin w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4z" />
+              </svg>
+              <span className="text-sm">Memuat berita terkini...</span>
+            </div>
+          ) : dataBerita.length === 0 ? (
+            <div className="text-center py-12 text-gray-400 text-sm">Belum ada berita yang dipublikasikan.</div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              {dataBerita.map((berita) => (
+                <article
+                  key={berita.id}
+                  id={`berita-${berita.id}`}
+                  className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 border border-gray-100 group"
+                >
+                  {/* Thumbnail: foto jika ada, fallback gradient */}
+                  <div
+                    className={`relative h-48 overflow-hidden ${berita.foto ? '' : `bg-gradient-to-br ${berita.gradient || 'from-blue-600 to-blue-800'}`} flex items-end p-4`}
                   >
-                    {berita.kategori}
-                  </span>
-                </div>
+                    {berita.foto && (
+                      <img src={berita.foto} alt={berita.judul} className="absolute inset-0 w-full h-full object-cover z-0" />
+                    )}
+                    {berita.foto && <div className="absolute inset-0 bg-black/30 z-[1]" aria-hidden="true" />}
+                    <span
+                      className="relative z-10 inline-block text-white text-xs font-bold px-3 py-1 rounded-full"
+                      style={{ backgroundColor: berita.kategoriColor || '#0A58CA' }}
+                    >
+                      {berita.kategori}
+                    </span>
+                  </div>
 
-                <div className="p-5">
-                  <p className="text-gray-400 text-xs mb-2">{berita.tanggal}</p>
-                  <h3 className="font-bold text-gray-900 text-base leading-snug mb-2 group-hover:text-[#0A58CA] transition-colors line-clamp-2">
-                    {berita.judul}
-                  </h3>
-                  <p className="text-gray-500 text-sm leading-relaxed mb-4 line-clamp-2">
-                    {berita.ringkasan}
-                  </p>
-                  <Link href={berita.href} className="text-xs font-semibold flex items-center gap-1 transition-colors hover:underline" style={{ color: "#0A58CA" }}>
-                    Baca Selengkapnya →
-                  </Link>
-                </div>
-              </article>
-            ))}
-          </div>
+                  <div className="p-5">
+                    <p className="text-gray-400 text-xs mb-2">{berita.tanggal}</p>
+                    <h3 className="font-bold text-gray-900 text-base leading-snug mb-2 group-hover:text-[#0A58CA] transition-colors line-clamp-2">
+                      {berita.judul}
+                    </h3>
+                    <p className="text-gray-500 text-sm leading-relaxed mb-4 line-clamp-2">
+                      {berita.ringkasan}
+                    </p>
+                    <Link href="/berita" className="text-xs font-semibold flex items-center gap-1 transition-colors hover:underline" style={{ color: "#0A58CA" }}>
+                      Baca Selengkapnya →
+                    </Link>
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 
