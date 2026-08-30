@@ -269,6 +269,17 @@ export default function AdminDashboardPage() {
     checkAdminSession();
   }, [router]);
 
+  /* ───────────────────────────────────────────────────────────
+     KELOMPOK F — Formulir Layanan CRUD
+     ─────────────────────────────────────────────────────────── */
+  const [daftarFormulirAdmin, setDaftarFormulirAdmin] = useState([]);
+  const [judulFormulir, setJudulFormulir]             = useState("");
+  const [fileFormulir, setFileFormulir]               = useState(null);
+  const [editFormulirId, setEditFormulirId]           = useState(null);
+  const [isSavingFormulir, setIsSavingFormulir]       = useState(false);
+  const [loadingFormulirAdmin, setLoadingFormulirAdmin] = useState(false);
+
+
   /* ── useEffect: Load Data dari Supabase ── */
   useEffect(() => {
     const loadDataSupabase = async () => {
@@ -315,6 +326,7 @@ export default function AdminDashboardPage() {
       loadDataSupabase();
       fetchPengaturanBeranda();
       fetchPengaturanProfil();
+      fetchFormulirAdmin();
     }
   }, [isAuthed]);
 
@@ -347,6 +359,102 @@ export default function AdminDashboardPage() {
     }
   };
 
+
+  /* ── fetchFormulirAdmin: Ambil data dari Supabase ────────── */
+  const fetchFormulirAdmin = async () => {
+    setLoadingFormulirAdmin(true);
+    const { data, error } = await supabase
+      .from("formulir_layanan")
+      .select("*")
+      .order("created_at", { ascending: false });
+    if (!error && data) setDaftarFormulirAdmin(data);
+    else if (error) console.error("Gagal memuat formulir admin:", error);
+    setLoadingFormulirAdmin(false);
+  };
+
+  /* ── handleSimpanFormulir: Create / Update ─────────────── */
+  const handleSimpanFormulir = async () => {
+    if (!judulFormulir.trim()) { alert("Judul formulir wajib diisi!"); return; }
+    if (!editFormulirId && !fileFormulir) { alert("File wajib dipilih saat menambah formulir baru!"); return; }
+
+    setIsSavingFormulir(true);
+    try {
+      let fileUrl  = null;
+      let ukuranFile = null;
+
+      /* Upload file jika ada file baru yang dipilih */
+      if (fileFormulir) {
+        const fileExt  = fileFormulir.name.split(".").pop();
+        const fileName = `formulir-${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+        const filePath = `public/${fileName}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from("file_formulir")
+          .upload(filePath, fileFormulir);
+
+        if (uploadError) { alert("\u274C Gagal upload file: " + uploadError.message); return; }
+
+        const { data: pubData } = supabase.storage
+          .from("file_formulir")
+          .getPublicUrl(filePath);
+        fileUrl = pubData.publicUrl;
+
+        /* Format ukuran file */
+        const bytes = fileFormulir.size;
+        ukuranFile = bytes >= 1048576
+          ? (bytes / 1048576).toFixed(1) + " MB"
+          : Math.round(bytes / 1024) + " KB";
+      }
+
+      const payload = {
+        judul: judulFormulir.trim(),
+        ...(fileUrl     && { file_url:    fileUrl }),
+        ...(ukuranFile  && { ukuran_file: ukuranFile }),
+        updated_at: new Date().toISOString(),
+      };
+
+      let err;
+      if (editFormulirId) {
+        const { error } = await supabase
+          .from("formulir_layanan").update(payload).eq("id", editFormulirId);
+        err = error;
+      } else {
+        const { error } = await supabase
+          .from("formulir_layanan").insert([payload]);
+        err = error;
+      }
+
+      if (err) { alert("\u274C Gagal menyimpan: " + err.message); return; }
+
+      alert("\u2705 Formulir berhasil " + (editFormulirId ? "diperbarui" : "ditambahkan") + "!");
+      setJudulFormulir(""); setFileFormulir(null); setEditFormulirId(null);
+      /* Reset file input */
+      const el = document.getElementById("input-file-formulir");
+      if (el) el.value = "";
+      await fetchFormulirAdmin();
+    } finally {
+      setIsSavingFormulir(false);
+    }
+  };
+
+  /* ── handleEditFormulir: Isi form dengan data yang dipilih  */
+  const handleEditFormulir = (item) => {
+    setEditFormulirId(item.id);
+    setJudulFormulir(item.judul);
+    setFileFormulir(null);
+    const el = document.getElementById("input-file-formulir");
+    if (el) el.value = "";
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  /* ── handleHapusFormulir: Delete dari tabel Supabase ─────── */
+  const handleHapusFormulir = async (id) => {
+    if (!confirm("Yakin ingin menghapus formulir ini?")) return;
+    const { error } = await supabase
+      .from("formulir_layanan").delete().eq("id", id);
+    if (error) { alert("\u274C Gagal menghapus: " + error.message); }
+    else await fetchFormulirAdmin();
+  };
 
   /* ── fetchBerita: Ambil data dari Supabase ─────────────── */
   const fetchBerita = async () => {
@@ -1370,6 +1478,201 @@ export default function AdminDashboardPage() {
                 )}
               </div>
 
+            </div>
+          )}
+
+          {/* ════════════════════════════════════════════
+              KONTEN — FORMULIR LAYANAN (CRUD)
+              ════════════════════════════════════════════ */}
+          {activeNav === "layanan" && (
+            <div className="space-y-8">
+              {/* Heading */}
+              <div>
+                <h1 className="text-2xl font-extrabold text-gray-900 leading-tight">Kelola Formulir Layanan</h1>
+                <p className="text-gray-500 text-sm mt-1 max-w-xl">
+                  Tambah, ubah, atau hapus formulir yang bisa diunduh oleh warga di halaman Layanan.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
+
+                {/* ── Kolom Kiri: Form Input ────────────────── */}
+                <div className="lg:col-span-2">
+                  <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
+                    <SectionHeader
+                      icon={<IconForm />}
+                      title={editFormulirId ? "Edit Formulir" : "Tambah Formulir Baru"}
+                      subtitle={editFormulirId
+                        ? "Ubah judul atau unggah file baru untuk mengganti."
+                        : "Isi judul dan pilih file formulir yang akan diunggah."}
+                    />
+
+                    {/* Mode Edit Indicator */}
+                    {editFormulirId && (
+                      <div className="mb-4 flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-2.5">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-amber-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Z" />
+                        </svg>
+                        <p className="text-amber-700 text-xs font-medium">Mode edit aktif. File lama tetap digunakan jika tidak dipilih file baru.</p>
+                      </div>
+                    )}
+
+                    <div className="border-t border-gray-100 pt-5 space-y-4">
+                      {/* Input Judul */}
+                      <div>
+                        <label htmlFor="input-judul-formulir" className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                          Judul Formulir <span className="text-red-400">*</span>
+                        </label>
+                        <input
+                          id="input-judul-formulir"
+                          type="text"
+                          value={judulFormulir}
+                          onChange={(e) => setJudulFormulir(e.target.value)}
+                          placeholder="Cth: Form Pendaftaran Penduduk"
+                          className="w-full py-2.5 px-4 text-sm text-gray-900 bg-white border border-gray-200 rounded-xl focus:outline-none transition-all"
+                          onFocus={(e) => { e.target.style.boxShadow = "0 0 0 3px rgba(10,88,202,0.12)"; e.target.style.borderColor = "#0A58CA"; }}
+                          onBlur={(e) => { e.target.style.boxShadow = ""; e.target.style.borderColor = ""; }}
+                        />
+                      </div>
+
+                      {/* Input File */}
+                      <div>
+                        <label htmlFor="input-file-formulir" className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                          File Formulir {editFormulirId ? "(opsional, untuk ganti file)" : <span className="text-red-400">*</span>}
+                        </label>
+                        <input
+                          id="input-file-formulir"
+                          type="file"
+                          accept=".pdf,.doc,.docx"
+                          onChange={(e) => setFileFormulir(e.target.files[0] || null)}
+                          className="w-full text-sm text-gray-600 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 border border-gray-200 rounded-xl px-2 py-1.5 cursor-pointer transition-all"
+                        />
+                        <p className="text-xs text-gray-400 mt-1">Format: PDF, DOC, DOCX</p>
+                        {fileFormulir && (
+                          <p className="text-xs text-green-600 mt-1 font-medium">
+                            ✅ {fileFormulir.name} ({fileFormulir.size >= 1048576
+                              ? (fileFormulir.size / 1048576).toFixed(1) + " MB"
+                              : Math.round(fileFormulir.size / 1024) + " KB"})
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Tombol Submit */}
+                      <div className="flex gap-2 pt-1">
+                        <button
+                          type="button"
+                          id="btn-simpan-formulir"
+                          onClick={handleSimpanFormulir}
+                          disabled={isSavingFormulir}
+                          className="flex-1 flex items-center justify-center gap-2 text-white font-bold text-sm py-3 rounded-xl shadow-md transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg disabled:opacity-60 disabled:cursor-not-allowed disabled:translate-y-0"
+                          style={{ background: "linear-gradient(135deg, #0A58CA, #052c65)" }}
+                        >
+                          {isSavingFormulir ? (
+                            <><svg className="animate-spin w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4z" /></svg>Menyimpan...</>
+                          ) : (
+                            <><IconSave />{editFormulirId ? "Update Formulir" : "Simpan & Upload"}</>
+                          )}
+                        </button>
+                        {editFormulirId && (
+                          <button
+                            type="button"
+                            id="btn-batal-edit-formulir"
+                            onClick={() => { setEditFormulirId(null); setJudulFormulir(""); setFileFormulir(null); const el = document.getElementById("input-file-formulir"); if (el) el.value = ""; }}
+                            className="px-4 py-3 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-all"
+                          >
+                            Batal
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* ── Kolom Kanan: Daftar Formulir ─────────── */}
+                <div className="lg:col-span-3">
+                  <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
+                    <SectionHeader
+                      icon={<IconForm />}
+                      title={`Formulir Tersedia (${daftarFormulirAdmin.length})`}
+                      subtitle="Klik Edit untuk mengubah, atau Hapus untuk menghapus formulir."
+                    />
+
+                    {/* Loading */}
+                    {loadingFormulirAdmin && (
+                      <div className="border-t border-gray-100 pt-4 space-y-3">
+                        {[1, 2, 3].map((i) => (
+                          <div key={i} className="flex items-center gap-3 p-3 rounded-xl border border-gray-100 animate-pulse">
+                            <div className="w-8 h-8 bg-gray-100 rounded-lg flex-shrink-0" />
+                            <div className="flex-1 space-y-1.5">
+                              <div className="h-3 bg-gray-200 rounded w-2/3" />
+                              <div className="h-2.5 bg-gray-100 rounded w-1/4" />
+                            </div>
+                            <div className="w-14 h-7 bg-gray-100 rounded-lg flex-shrink-0" />
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Empty state */}
+                    {!loadingFormulirAdmin && daftarFormulirAdmin.length === 0 && (
+                      <div className="border-t border-gray-100 pt-6 flex flex-col items-center justify-center py-10 gap-3 text-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="w-12 h-12 text-gray-200" fill="none" viewBox="0 0 24 24" strokeWidth={1} stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+                        </svg>
+                        <p className="text-gray-400 text-sm font-medium">Belum ada formulir yang diunggah.</p>
+                        <p className="text-gray-300 text-xs">Gunakan form di sebelah kiri untuk menambahkan.</p>
+                      </div>
+                    )}
+
+                    {/* Daftar Formulir */}
+                    {!loadingFormulirAdmin && daftarFormulirAdmin.length > 0 && (
+                      <div className="border-t border-gray-100 pt-4 space-y-2 max-h-[420px] overflow-y-auto pr-1"
+                        style={{ scrollbarWidth: "thin", scrollbarColor: "#CBD5E1 transparent" }}>
+                        {daftarFormulirAdmin.map((item, index) => (
+                          <div key={item.id}
+                            className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${editFormulirId === item.id ? "border-amber-300 bg-amber-50" : "border-gray-100 hover:border-gray-200 hover:bg-gray-50"}`}>
+                            {/* Nomor */}
+                            <span className="flex-shrink-0 w-7 h-7 flex items-center justify-center rounded-lg bg-gray-100 text-gray-500 text-xs font-bold">
+                              {index + 1}
+                            </span>
+                            {/* Info Formulir */}
+                            <div className="flex-1 min-w-0">
+                              <p className="text-gray-900 font-semibold text-sm leading-snug truncate">{item.judul}</p>
+                              <div className="flex items-center gap-2 mt-0.5">
+                                <span className="text-gray-400 text-xs">{item.ukuran_file || "—"}</span>
+                                {item.file_url && (
+                                  <a href={item.file_url} target="_blank" rel="noopener noreferrer"
+                                    className="text-blue-500 text-xs hover:underline">Lihat file ↗</a>
+                                )}
+                              </div>
+                            </div>
+                            {/* Tombol Edit & Hapus */}
+                            <div className="flex-shrink-0 flex items-center gap-1.5">
+                              <button type="button" id={`btn-edit-formulir-${item.id}`}
+                                onClick={() => handleEditFormulir(item)}
+                                className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-blue-200 text-blue-600 hover:bg-blue-50 transition-all">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Z" />
+                                </svg>
+                                Edit
+                              </button>
+                              <button type="button" id={`btn-hapus-formulir-${item.id}`}
+                                onClick={() => handleHapusFormulir(item.id)}
+                                className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-red-200 text-red-500 hover:bg-red-50 transition-all">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+                                </svg>
+                                Hapus
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+              </div>
             </div>
           )}
 
