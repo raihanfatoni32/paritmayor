@@ -65,7 +65,7 @@ export default function Navbar() {
           >
             {/* Logo kelurahan — ganti /logo-parit-mayor.svg dengan file logo asli Anda */}
             <Image
-              src="/logo-paritmayor.png"
+              src="/logoparitmayor.png"
               alt="Logo Kelurahan Parit Mayor"
               width={40}
               height={40}
